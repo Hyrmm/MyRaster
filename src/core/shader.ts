@@ -1,14 +1,17 @@
-class Shader {
-
-
+export interface Shader {
+    vertexShader(): void
+    fragmentShader(): void
 }
 
 
 
-class VertextShader extends Shader {
+export class GouraudShader implements Shader {
 
-}
+    vertexShader() {
 
-class FragmentShader extends Shader {
+    }
 
+    fragmentShader() {
+
+    }
 }

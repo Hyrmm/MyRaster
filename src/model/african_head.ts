@@ -1,6 +1,3 @@
-import {Mesh} from 'webgl-obj-loader';
-
-
 const fileText = `
 v -0.000581696 -0.734665 -0.623267
 v 0.000283538 -1 0.286843
@@ -6359,6 +6356,4 @@ f 1201/1249/1201 1200/1246/1200 1199/1245/1199
 f 1201/1249/1201 1202/1248/1202 1200/1246/1200
 # 2492 faces
 `
-
-
-export default new Mesh(fileText)
+export default fileText

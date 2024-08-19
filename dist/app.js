@@ -1,28 +1,5 @@
 'use strict';
 
-class FrameBuffer {
-    constructor(width, height) {
-        this.data = new ImageData(width, height);
-    }
-    get frameData() {
-        return this.data;
-    }
-    setPixel(x, y, rgba) {
-        this.data.data[((y * this.data.width + x) * 4) + 0] = rgba[0];
-        this.data.data[((y * this.data.width + x) * 4) + 1] = rgba[1];
-        this.data.data[((y * this.data.width + x) * 4) + 2] = rgba[2];
-        this.data.data[((y * this.data.width + x) * 4) + 3] = rgba[3];
-    }
-    getPixel(x, y) {
-        const result = [0, 0, 0, 0];
-        result[0] = this.data.data[((y * this.data.width + x) * 4) + 0];
-        result[1] = this.data.data[((y * this.data.width + x) * 4) + 1];
-        result[2] = this.data.data[((y * this.data.width + x) * 4) + 2];
-        result[3] = this.data.data[((y * this.data.width + x) * 4) + 3];
-        return result;
-    }
-}
-
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 var webglObjLoader_min = {exports: {}};
@@ -56,6 +33,29 @@ var webglObjLoader_min = {exports: {}};
 } (webglObjLoader_min));
 
 var webglObjLoader_minExports = webglObjLoader_min.exports;
+
+class FrameBuffer {
+    constructor(width, height) {
+        this.data = new ImageData(width, height);
+    }
+    get frameData() {
+        return this.data;
+    }
+    setPixel(x, y, rgba) {
+        this.data.data[((y * this.data.width + x) * 4) + 0] = rgba[0];
+        this.data.data[((y * this.data.width + x) * 4) + 1] = rgba[1];
+        this.data.data[((y * this.data.width + x) * 4) + 2] = rgba[2];
+        this.data.data[((y * this.data.width + x) * 4) + 3] = rgba[3];
+    }
+    getPixel(x, y) {
+        const result = [0, 0, 0, 0];
+        result[0] = this.data.data[((y * this.data.width + x) * 4) + 0];
+        result[1] = this.data.data[((y * this.data.width + x) * 4) + 1];
+        result[2] = this.data.data[((y * this.data.width + x) * 4) + 2];
+        result[3] = this.data.data[((y * this.data.width + x) * 4) + 3];
+        return result;
+    }
+}
 
 const fileText = `
 v -0.000581696 -0.734665 -0.623267
@@ -6415,17 +6415,25 @@ f 1201/1249/1201 1200/1246/1200 1199/1245/1199
 f 1201/1249/1201 1202/1248/1202 1200/1246/1200
 # 2492 faces
 `;
-var african_head = new webglObjLoader_minExports.Mesh(fileText);
+
+class GouraudShader {
+    vertexShader() {
+    }
+    fragmentShader() {
+    }
+}
 
 class Raster {
     constructor(w, h, context) {
         this.width = w;
         this.height = h;
-        this.vertexsBuffer = african_head.vertices;
-        this.trianglseBuffer = african_head.indices;
-        this.frameBuffer = new FrameBuffer(w, h);
         this.context = context;
-        console.log(this.african_head);
+        this.model = new webglObjLoader_minExports.Mesh(fileText);
+        this.shader = new GouraudShader(this);
+        this.vertexsBuffer = this.model.vertices;
+        this.trianglseBuffer = this.model.indices;
+        this.frameBuffer = new FrameBuffer(w, h);
+        console.log(this.model);
     }
     clear() {
         for (let byteOffset = 0; byteOffset < this.frameBuffer.frameData.data.length; byteOffset += 4) {
@@ -6438,6 +6446,16 @@ class Raster {
     }
     render() {
         this.clear();
+        for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
+            // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
+            const idx1 = this.trianglseBuffer[0];
+            const idx2 = this.trianglseBuffer[1];
+            const idx3 = this.trianglseBuffer[2];
+            [this.vertexsBuffer[idx1 + 0], this.vertexsBuffer[idx1 + 1], this.vertexsBuffer[idx1 + 2]];
+            [this.vertexsBuffer[idx2 + 0], this.vertexsBuffer[idx2 + 1], this.vertexsBuffer[idx2 + 2]];
+            [this.vertexsBuffer[idx3 + 0], this.vertexsBuffer[idx3 + 1], this.vertexsBuffer[idx3 + 2]];
+            // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
+        }
         this.context.putImageData(this.frameBuffer.frameData, 0, 0);
     }
 }
