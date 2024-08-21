@@ -26,10 +26,11 @@ export class FlatShader extends Shader {
 
     public vertexShader(vertex: Vec3): Vec4 {
         const viewMatrix = this.raster.viewMatrix
+        const modelMatrix = this.raster.modelMatrix
         const viewPortMatrix = this.raster.viewPortMatrix
         // const projectionMatrix = this.raster.projectionMatrix
 
-        const mergedMatrix = viewPortMatrix.multiply(viewMatrix)
+        const mergedMatrix = viewPortMatrix.multiply(viewMatrix.multiply(modelMatrix))
 
         return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1))
     }

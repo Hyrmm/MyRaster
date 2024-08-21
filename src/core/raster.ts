@@ -11,6 +11,7 @@ export class Raster {
 
     private width: number
     private height: number
+    private fitType: string
 
     private frameBuffer: FrameBuffer
     private vertexsBuffer: Array<number>
@@ -20,9 +21,8 @@ export class Raster {
     private shader: Shader
     private camera: Camera
 
-
-
     public viewMatrix: Matrix44
+    public modelMatrix: Matrix44
     public viewPortMatrix: Matrix44
     public projectionMatrix: Matrix44
 
@@ -32,6 +32,7 @@ export class Raster {
 
         this.width = w
         this.height = h
+        this.fitType = "height"
 
         this.context = context
         this.model = new Mesh(african_head)
@@ -42,14 +43,8 @@ export class Raster {
         this.trianglseBuffer = this.model.indices
         this.frameBuffer = new FrameBuffer(w, h)
 
-        this.viewMatrix = this.camera.lookAt(new Vec3(0, 0, 1000), new Vec3(0, 0, 0), new Vec3(0, 1, 0))
-        // this.projectionMatrix = this.camera.projection(w, h, 45)
-        this.viewPortMatrix = new Matrix44([
-            [this.width / 2, 0, 0, this.width / 2],
-            [0, -this.height / 2, 0, this.height / 2],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
-        ])
+        this.initMatrix()
+        console.log(this.model)
     }
 
 
@@ -64,7 +59,6 @@ export class Raster {
         }
     }
 
-
     public render() {
         this.clear()
 
@@ -75,7 +69,7 @@ export class Raster {
             // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
             for (let j = 0; j < 3; j++) {
                 const idx = this.trianglseBuffer[i + j]
-                const vertex = new Vec3(this.vertexsBuffer[idx + 0], this.vertexsBuffer[idx + 1], this.vertexsBuffer[idx + 2])
+                const vertex = new Vec3(this.vertexsBuffer[idx * 3 + 0], this.vertexsBuffer[idx * 3 + 1], this.vertexsBuffer[idx * 3 + 2])
                 const vertexScreen = this.shader.vertexShader(vertex)
                 // screenCoords.push(this.shader.vertexShader(vertex))
                 this.frameBuffer.setPixel(vertexScreen.x, vertexScreen.y, [255, 0, 0, 255])
@@ -90,17 +84,52 @@ export class Raster {
         this.context.putImageData(this.frameBuffer.frameData, 0, 0)
     }
 
+    public line(screenCoords: Array<Vec4>) {
+    }
+
     public triangle(screenCoords: Array<Vec4>) {
         // 方式一：完整的遍历屏幕所有点，计算是否在三角形内，并进行着色
         for (let x = 0; x < this.width; x++) {
             for (let y = 0; y < this.height; y++) {
-                
+
                 // const barycentric = this.barycentric(x, y, screenCoords)
             }
         }
     }
 
-    public line(screenCoords: Array<Vec4>) {
+    public initMatrix() {
+
+        // 模型矩阵：对模型进行平移、旋转、缩放等操作，得到模型矩阵
+        this.modelMatrix = new Matrix44([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ])
+
+        // 视口矩阵：将相机坐标系转换到裁剪坐标系，得到视口矩阵
+        const screenAspect = this.fitType == "height" ? this.width / this.height : this.height / this.width
+        const scaleHigh = this.fitType == "height" ? this.height / 2 : this.height / 2 / screenAspect
+        const scaleWidth = this.fitType == "height" ? this.width / 2 / screenAspect : this.width / 2
+        // 这里-scaleHigh是因为屏幕坐标系的原点在左上角，而模型坐标系的原点在中心,要进行坐标反转
+        this.viewPortMatrix = new Matrix44([
+            [scaleWidth, 0, 0, this.width / 2],
+            [0, -scaleHigh, 0, this.height / 2],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ])
+        // this.viewPortMatrix = new Matrix44([
+        //     [this.width / 2, 0, 0, this.width / 2],
+        //     [0, -this.height / 2, 0, this.height / 2],
+        //     [0, 0, 1, 0],
+        //     [0, 0, 0, 1]
+        // ])
+
+        // 视图矩阵：将世界坐标系转换到相机坐标系，得到视图矩阵
+        this.viewMatrix = this.camera.lookAt(new Vec3(4, 0, 6), new Vec3(0, 0, 0), new Vec3(0, 1, 0))
+
+        // this.projectionMatrix = this.camera.projection(w, h, 45)
     }
+
 }
 

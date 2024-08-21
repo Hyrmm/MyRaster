@@ -6458,9 +6458,10 @@ class Shader {
 class FlatShader extends Shader {
     vertexShader(vertex) {
         const viewMatrix = this.raster.viewMatrix;
+        const modelMatrix = this.raster.modelMatrix;
         const viewPortMatrix = this.raster.viewPortMatrix;
         // const projectionMatrix = this.raster.projectionMatrix
-        const mergedMatrix = viewPortMatrix.multiply(viewMatrix);
+        const mergedMatrix = viewPortMatrix.multiply(viewMatrix.multiply(modelMatrix));
         return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1));
     }
     fragmentShader() {
@@ -6534,7 +6535,7 @@ class Camera {
     lookAt(pos, lookAt, up) {
         // 基于右手坐标系，所以 x * y = +z , 且相机永远朝向 -z 方向
         // 相机坐标系的基向量
-        const vecZ = pos.sub(lookAt).normalize();
+        const vecZ = lookAt.sub(pos).normalize();
         const vecX = up.cross(vecZ).normalize();
         const vecY = vecZ.cross(vecX);
         const rotationMat = new Matrix44([
@@ -6543,12 +6544,17 @@ class Camera {
             [vecX.z, vecY.z, vecZ.z, 0],
             [0, 0, 0, 1]
         ]);
+        const rotationMatRev = new Matrix44();
+        rotationMatRev.setRow(0, [vecX.x, vecX.y, vecX.z, 0]);
+        rotationMatRev.setRow(1, [vecY.x, vecY.y, vecY.z, 0]);
+        rotationMatRev.setRow(2, [vecZ.x, vecZ.y, vecZ.z, 0]);
+        rotationMatRev.setRow(3, [0, 0, 0, 1]);
         console.log(rotationMat);
         // 平移矩阵(将世界坐标系原点移动到相机坐标系原点)
         const transMat = new Matrix44();
         transMat.setCol(3, [-pos.x, -pos.y, -pos.z, 1]);
         // 合成view矩阵，先平移后旋转
-        return transMat.multiply(rotationMat);
+        return rotationMatRev.multiply(transMat);
     }
     projection(width, height) {
         return new Matrix44();
@@ -6559,6 +6565,7 @@ class Raster {
     constructor(w, h, context) {
         this.width = w;
         this.height = h;
+        this.fitType = "height";
         this.context = context;
         this.model = new webglObjLoader_minExports.Mesh(fileText);
         this.shader = new FlatShader(this);
@@ -6566,14 +6573,8 @@ class Raster {
         this.vertexsBuffer = this.model.vertices;
         this.trianglseBuffer = this.model.indices;
         this.frameBuffer = new FrameBuffer(w, h);
-        this.viewMatrix = this.camera.lookAt(new Vec3(0, 0, 1000), new Vec3(0, 0, 0), new Vec3(0, 1, 0));
-        // this.projectionMatrix = this.camera.projection(w, h, 45)
-        this.viewPortMatrix = new Matrix44([
-            [this.width / 2, 0, 0, this.width / 2],
-            [0, -this.height / 2, 0, this.height / 2],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
-        ]);
+        this.initMatrix();
+        console.log(this.model);
     }
     clear() {
         for (let byteOffset = 0; byteOffset < this.frameBuffer.frameData.data.length; byteOffset += 4) {
@@ -6590,7 +6591,7 @@ class Raster {
             // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
             for (let j = 0; j < 3; j++) {
                 const idx = this.trianglseBuffer[i + j];
-                const vertex = new Vec3(this.vertexsBuffer[idx + 0], this.vertexsBuffer[idx + 1], this.vertexsBuffer[idx + 2]);
+                const vertex = new Vec3(this.vertexsBuffer[idx * 3 + 0], this.vertexsBuffer[idx * 3 + 1], this.vertexsBuffer[idx * 3 + 2]);
                 const vertexScreen = this.shader.vertexShader(vertex);
                 // screenCoords.push(this.shader.vertexShader(vertex))
                 this.frameBuffer.setPixel(vertexScreen.x, vertexScreen.y, [255, 0, 0, 255]);
@@ -6601,6 +6602,8 @@ class Raster {
         }
         this.context.putImageData(this.frameBuffer.frameData, 0, 0);
     }
+    line(screenCoords) {
+    }
     triangle(screenCoords) {
         // 方式一：完整的遍历屏幕所有点，计算是否在三角形内，并进行着色
         for (let x = 0; x < this.width; x++) {
@@ -6609,7 +6612,34 @@ class Raster {
             }
         }
     }
-    line(screenCoords) {
+    initMatrix() {
+        // 模型矩阵：对模型进行平移、旋转、缩放等操作，得到模型矩阵
+        this.modelMatrix = new Matrix44([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ]);
+        // 视口矩阵：将相机坐标系转换到裁剪坐标系，得到视口矩阵
+        const screenAspect = this.fitType == "height" ? this.width / this.height : this.height / this.width;
+        const scaleHigh = this.fitType == "height" ? this.height / 2 : this.height / 2 / screenAspect;
+        const scaleWidth = this.fitType == "height" ? this.width / 2 / screenAspect : this.width / 2;
+        // 这里-scaleHigh是因为屏幕坐标系的原点在左上角，而模型坐标系的原点在中心,要进行坐标反转
+        this.viewPortMatrix = new Matrix44([
+            [scaleWidth, 0, 0, this.width / 2],
+            [0, -scaleHigh, 0, this.height / 2],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ]);
+        // this.viewPortMatrix = new Matrix44([
+        //     [this.width / 2, 0, 0, this.width / 2],
+        //     [0, -this.height / 2, 0, this.height / 2],
+        //     [0, 0, 1, 0],
+        //     [0, 0, 0, 1]
+        // ])
+        // 视图矩阵：将世界坐标系转换到相机坐标系，得到视图矩阵
+        this.viewMatrix = this.camera.lookAt(new Vec3(4, 0, 6), new Vec3(0, 0, 0), new Vec3(0, 1, 0));
+        // this.projectionMatrix = this.camera.projection(w, h, 45)
     }
 }
 
