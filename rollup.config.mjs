@@ -10,5 +10,5 @@ export default {
 	"esModuleInterop": true,
 	"skipLibCheck": true,
 	"moduleResolution": "node",
-	plugins: [resolve(), commonjs(), typescript()]
+	"plugins": [resolve(), commonjs(), typescript()]
 }

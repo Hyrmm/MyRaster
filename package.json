@@ -10,7 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "obj-file-parser": "^0.6.2",
     "webgl-obj-loader": "^2.0.8"
   },
   "devDependencies": {

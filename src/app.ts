@@ -1,5 +1,6 @@
 import { Raster } from "./core/raster"
-import { Matrix } from "./math/matrix"
+import { Matrix, Matrix44 } from "./math/matrix"
+import { Vec4 } from "./math/vector"
 
 class App {
 
@@ -33,3 +34,20 @@ class App {
 
 App.init(document.getElementById("canvas") as HTMLCanvasElement)
 App.start()
+
+
+
+const mat1 = new Matrix44([
+    [1, 1, 1, 1],
+    [2, 2, 2, 2],
+    [3, 3, 3, 3],
+    [4, 4, 4, 4]
+])
+const mat2 = new Matrix44([
+    [2, 2, 2, 2],
+    [2, 2, 2, 2],
+    [2, 2, 2, 2],
+    [2, 2, 2, 2]
+])
+
+console.log(mat1.multiply(mat2))

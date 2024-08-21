@@ -42,6 +42,8 @@ class FrameBuffer {
         return this.data;
     }
     setPixel(x, y, rgba) {
+        x = Math.floor(x);
+        y = Math.floor(y);
         this.data.data[((y * this.data.width + x) * 4) + 0] = rgba[0];
         this.data.data[((y * this.data.width + x) * 4) + 1] = rgba[1];
         this.data.data[((y * this.data.width + x) * 4) + 2] = rgba[2];
@@ -6416,10 +6418,140 @@ f 1201/1249/1201 1202/1248/1202 1200/1246/1200
 # 2492 faces
 `;
 
-class GouraudShader {
-    vertexShader() {
+class Vec3 {
+    constructor(x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+    sub(v) {
+        return new Vec3(this.x - v.x, this.y - v.y, this.z - v.z);
+    }
+    cross(v) {
+        const x = this.y * v.z - this.z * v.y;
+        const y = this.z * v.x - this.x * v.z;
+        const z = this.x * v.y - this.y * v.x;
+        return new Vec3(x, y, z);
+    }
+    normalize() {
+        const length = this.length;
+        return new Vec3(this.x / length, this.y / length, this.z / length);
+    }
+    get length() {
+        return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    }
+}
+class Vec4 {
+    constructor(x, y, z, w) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.w = w;
+    }
+}
+
+class Shader {
+    constructor(raster) { this.raster = raster; }
+    vertexShader(vertex) { return new Vec4(0, 0, 0, 0); }
+    fragmentShader(vertex1, vertex2, vertex3) { }
+}
+class FlatShader extends Shader {
+    vertexShader(vertex) {
+        const viewMatrix = this.raster.viewMatrix;
+        const viewPortMatrix = this.raster.viewPortMatrix;
+        // const projectionMatrix = this.raster.projectionMatrix
+        const mergedMatrix = viewPortMatrix.multiply(viewMatrix);
+        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1));
     }
     fragmentShader() {
+    }
+}
+
+class Matrix {
+}
+class Matrix44 extends Matrix {
+    constructor(data) {
+        super();
+        if (data) {
+            this.data = data;
+        }
+        else {
+            this.data = [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]
+            ];
+        }
+        this.cols = 4;
+        this.rows = 4;
+    }
+    setCol(col, val) {
+        if (val.length != 4)
+            throw new Error("Invalid input length");
+        this.data[0][col] = val[0];
+        this.data[1][col] = val[1];
+        this.data[2][col] = val[2];
+        this.data[3][col] = val[3];
+    }
+    setRow(row, val) {
+        if (val.length != 4)
+            throw new Error("Invalid input length");
+        this.data[row][0] = val[0];
+        this.data[row][1] = val[1];
+        this.data[row][2] = val[2];
+        this.data[row][3] = val[3];
+    }
+    multiply(mat) {
+        const result = new Matrix44();
+        for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+                let sum = 0;
+                for (let k = 0; k < 4; k++) {
+                    sum += this.data[i][k] * mat.data[k][j];
+                }
+                result.data[i][j] = sum;
+            }
+        }
+        return result;
+    }
+    multiplyVec(vec) {
+        const result = [];
+        for (let i = 0; i < 4; i++) {
+            result.push(this.data[i][0] * vec.x + this.data[i][1] * vec.y + this.data[i][2] * vec.z + this.data[i][3] * vec.w);
+        }
+        return new Vec4(result[0], result[1], result[2], result[3]);
+    }
+}
+
+class Camera {
+    constructor(fovY, aspect, near, far) {
+        this.fovY = fovY;
+        this.far = far;
+        this.near = near;
+        this.aspect = aspect;
+    }
+    lookAt(pos, lookAt, up) {
+        // 基于右手坐标系，所以 x * y = +z , 且相机永远朝向 -z 方向
+        // 相机坐标系的基向量
+        const vecZ = pos.sub(lookAt).normalize();
+        const vecX = up.cross(vecZ).normalize();
+        const vecY = vecZ.cross(vecX);
+        const rotationMat = new Matrix44([
+            [vecX.x, vecY.x, vecZ.x, 0],
+            [vecX.y, vecY.y, vecZ.y, 0],
+            [vecX.z, vecY.z, vecZ.z, 0],
+            [0, 0, 0, 1]
+        ]);
+        console.log(rotationMat);
+        // 平移矩阵(将世界坐标系原点移动到相机坐标系原点)
+        const transMat = new Matrix44();
+        transMat.setCol(3, [-pos.x, -pos.y, -pos.z, 1]);
+        // 合成view矩阵，先平移后旋转
+        return transMat.multiply(rotationMat);
+    }
+    projection(width, height) {
+        return new Matrix44();
     }
 }
 
@@ -6429,11 +6561,19 @@ class Raster {
         this.height = h;
         this.context = context;
         this.model = new webglObjLoader_minExports.Mesh(fileText);
-        this.shader = new GouraudShader(this);
+        this.shader = new FlatShader(this);
+        this.camera = new Camera(45, w / h, 0.1, 1000);
         this.vertexsBuffer = this.model.vertices;
         this.trianglseBuffer = this.model.indices;
         this.frameBuffer = new FrameBuffer(w, h);
-        console.log(this.model);
+        this.viewMatrix = this.camera.lookAt(new Vec3(0, 0, 1000), new Vec3(0, 0, 0), new Vec3(0, 1, 0));
+        // this.projectionMatrix = this.camera.projection(w, h, 45)
+        this.viewPortMatrix = new Matrix44([
+            [this.width / 2, 0, 0, this.width / 2],
+            [0, -this.height / 2, 0, this.height / 2],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ]);
     }
     clear() {
         for (let byteOffset = 0; byteOffset < this.frameBuffer.frameData.data.length; byteOffset += 4) {
@@ -6448,15 +6588,28 @@ class Raster {
         this.clear();
         for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
             // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
-            const idx1 = this.trianglseBuffer[0];
-            const idx2 = this.trianglseBuffer[1];
-            const idx3 = this.trianglseBuffer[2];
-            [this.vertexsBuffer[idx1 + 0], this.vertexsBuffer[idx1 + 1], this.vertexsBuffer[idx1 + 2]];
-            [this.vertexsBuffer[idx2 + 0], this.vertexsBuffer[idx2 + 1], this.vertexsBuffer[idx2 + 2]];
-            [this.vertexsBuffer[idx3 + 0], this.vertexsBuffer[idx3 + 1], this.vertexsBuffer[idx3 + 2]];
-            // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
+            for (let j = 0; j < 3; j++) {
+                const idx = this.trianglseBuffer[i + j];
+                const vertex = new Vec3(this.vertexsBuffer[idx + 0], this.vertexsBuffer[idx + 1], this.vertexsBuffer[idx + 2]);
+                const vertexScreen = this.shader.vertexShader(vertex);
+                // screenCoords.push(this.shader.vertexShader(vertex))
+                this.frameBuffer.setPixel(vertexScreen.x, vertexScreen.y, [255, 0, 0, 255]);
+            }
+            // console.log(screenCoords)
+            // // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
+            // this.triangle(screenCoords)
         }
         this.context.putImageData(this.frameBuffer.frameData, 0, 0);
+    }
+    triangle(screenCoords) {
+        // 方式一：完整的遍历屏幕所有点，计算是否在三角形内，并进行着色
+        for (let x = 0; x < this.width; x++) {
+            for (let y = 0; y < this.height; y++) {
+                // const barycentric = this.barycentric(x, y, screenCoords)
+            }
+        }
+    }
+    line(screenCoords) {
     }
 }
 
@@ -6482,3 +6635,16 @@ class App {
 }
 App.init(document.getElementById("canvas"));
 App.start();
+const mat1 = new Matrix44([
+    [1, 1, 1, 1],
+    [2, 2, 2, 2],
+    [3, 3, 3, 3],
+    [4, 4, 4, 4]
+]);
+const mat2 = new Matrix44([
+    [2, 2, 2, 2],
+    [2, 2, 2, 2],
+    [2, 2, 2, 2],
+    [2, 2, 2, 2]
+]);
+console.log(mat1.multiply(mat2));
