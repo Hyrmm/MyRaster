@@ -44,4 +44,8 @@ export class Vec4 {
         this.z = z
         this.w = w
     }
+
+    public toVec3(): Vec3 {
+        return new Vec3(this.x, this.y, this.z)
+    }
 }

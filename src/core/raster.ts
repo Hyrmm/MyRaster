@@ -2,7 +2,7 @@ import { Mesh } from "webgl-obj-loader";
 import { FrameBuffer } from "../utils/frameBuffer";
 import african_head from "../model/african_head";
 import { Shader, GouraudShader, FlatShader } from "../core/shader";
-import { Camera } from "./camera";
+import { Camera, ProjectType } from "./camera";
 import { Vec3, Vec4 } from "../math/vector";
 import { Matrix44 } from "../math/matrix"
 
@@ -37,7 +37,7 @@ export class Raster {
         this.context = context
         this.model = new Mesh(african_head)
         this.shader = new FlatShader(this)
-        this.camera = new Camera(45, w / h, 0.1, 1000)
+        this.camera = new Camera(45, w / h, 0.1, 1000, ProjectType.Orthogonal)
 
         this.vertexsBuffer = this.model.vertices
         this.trianglseBuffer = this.model.indices
@@ -126,7 +126,10 @@ export class Raster {
         // ])
 
         // 视图矩阵：将世界坐标系转换到相机坐标系，得到视图矩阵
-        this.viewMatrix = this.camera.lookAt(new Vec3(4, 0, 6), new Vec3(0, 0, 0), new Vec3(0, 1, 0))
+        const cameraUp = new Vec3(0, 1, 0)
+        const cameraPos = new Vec3(0, 0, 1)
+        const cameraLookAt = new Vec3(0, 0, 0)
+        this.viewMatrix = this.camera.lookAt(cameraPos, cameraLookAt, cameraUp)
 
         // this.projectionMatrix = this.camera.projection(w, h, 45)
     }
