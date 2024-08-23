@@ -2,8 +2,9 @@ import { Mesh } from "webgl-obj-loader";
 import { FrameBuffer } from "../utils/frameBuffer";
 import african_head from "../model/african_head";
 import { Shader, GouraudShader, FlatShader } from "../core/shader";
-import { Camera, ProjectType } from "./camera";
+import { Camera, ProjectType, CameraParam } from "./camera";
 import { Vec3, Vec4 } from "../math/vector";
+import { barycentric } from "../math/math"
 import { Matrix44 } from "../math/matrix"
 
 
@@ -28,7 +29,15 @@ export class Raster {
 
     private context: CanvasRenderingContext2D
 
+
     constructor(w: number, h: number, context: CanvasRenderingContext2D) {
+
+        const defultCameraConfig: CameraParam = {
+            fovY: 45, aspect: w / h,
+            near: 0.1, far: 1000,
+            projectType: ProjectType.Orthogonal,
+            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 1), lookAt: new Vec3(0, 0, 0),
+        }
 
         this.width = w
         this.height = h
@@ -37,7 +46,7 @@ export class Raster {
         this.context = context
         this.model = new Mesh(african_head)
         this.shader = new FlatShader(this)
-        this.camera = new Camera(45, w / h, 0.1, 1000, ProjectType.Orthogonal)
+        this.camera = new Camera(defultCameraConfig)
 
         this.vertexsBuffer = this.model.vertices
         this.trianglseBuffer = this.model.indices
@@ -61,6 +70,16 @@ export class Raster {
 
     public render() {
         this.clear()
+        const temp = new Matrix44([
+            [1, 0, 0, 0],
+            [0, Math.cos(1 / 180 * Math.PI), -Math.sin(1 / 180 * Math.PI), 0],
+            [0, Math.sin(1 / 180 * Math.PI), Math.cos(1 / 180 * Math.PI), 0],
+            [0, 0, 0, 1]
+        ])
+
+        this.camera.rotatedCamera(temp)
+        this.viewMatrix = this.camera.getViewMat()
+
 
         for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
 
@@ -84,15 +103,12 @@ export class Raster {
         this.context.putImageData(this.frameBuffer.frameData, 0, 0)
     }
 
-    public line(screenCoords: Array<Vec4>) {
-    }
-
     public triangle(screenCoords: Array<Vec4>) {
         // 方式一：完整的遍历屏幕所有点，计算是否在三角形内，并进行着色
         for (let x = 0; x < this.width; x++) {
             for (let y = 0; y < this.height; y++) {
 
-                // const barycentric = this.barycentric(x, y, screenCoords)
+                // const c = barycentric(x, y, screenCoords)
             }
         }
     }
@@ -126,12 +142,8 @@ export class Raster {
         // ])
 
         // 视图矩阵：将世界坐标系转换到相机坐标系，得到视图矩阵
-        const cameraUp = new Vec3(0, 1, 0)
-        const cameraPos = new Vec3(0, 0, 1)
-        const cameraLookAt = new Vec3(0, 0, 0)
-        this.viewMatrix = this.camera.lookAt(cameraPos, cameraLookAt, cameraUp)
-
-        // this.projectionMatrix = this.camera.projection(w, h, 45)
+        this.viewMatrix = this.camera.getViewMat()
+        this.projectionMatrix = this.camera.getProjectMat()
     }
 
 }

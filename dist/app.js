@@ -6528,6 +6528,14 @@ class Matrix44 extends Matrix {
         }
         return new Vec4(result[0], result[1], result[2], result[3]);
     }
+    transpose() {
+        const result = new Matrix44();
+        result.setRow(0, [this.data[0][0], this.data[1][0], this.data[2][0], -this.data[0][3]]);
+        result.setRow(1, [this.data[0][1], this.data[1][1], this.data[2][1], -this.data[1][3]]);
+        result.setRow(2, [this.data[0][2], this.data[1][2], this.data[2][2], -this.data[2][3]]);
+        result.setRow(3, [0, 0, 0, 1]);
+        return result;
+    }
 }
 
 var ProjectType;
@@ -6536,47 +6544,60 @@ var ProjectType;
     ProjectType[ProjectType["Orthogonal"] = 1] = "Orthogonal";
 })(ProjectType || (ProjectType = {}));
 class Camera {
-    constructor(fovY, aspect, near, far, projectType) {
-        this.fovY = fovY;
-        this.far = far;
-        this.near = near;
-        this.aspect = aspect;
+    constructor(params) {
+        this.fovY = params.fovY;
+        this.aspect = params.aspect;
+        this.far = params.far;
+        this.near = params.near;
+        this.projectType = params.projectType;
+        this.up = params.up;
+        this.pos = params.pos;
+        this.lookAt = params.lookAt;
+        this.transMatExc = new Matrix44();
+        this.rotationMatExc = new Matrix44();
     }
-    lookAt(pos, lookAt, up) {
-        // 定义：
-        // 基础：基于右手系，X 叉乘 Y 等于+Z
-        // 原相机:原本和世界坐标系重合的相机
-        // 先相机:原相机经过矩阵变化后等到现在的相机状态，也就是pos,lookAt,up组成的状态
-        // 视图变化个人理解:
-        // 0、首先一个常识问题，对一个物体和相机以相同的方向和角度旋转，相机所观察到的画面是不不会变的，以互为相反的方向旋转，相机所观察的画面是我们显示生活中看到的画面
-        // 1、想象相机原本和世界坐标系重合，在经过旋转、平移等操作后，等到我们现在的相机状态，也就是相机坐标系，vecZ,vecX,vecY
-        // 2、由矩阵的本质，相机旋转、平移操作矩阵本质上就是现在相机坐标系的基向量，可以理解为原本和世界坐标系重合的相机经过现在的相机的基向量坐标系进行的矩阵变化
-        // 3、理论上我们只要将世界坐标系下的所有点都转换到相机坐标系下，也就是将所有世界左边乘上如今相机的基向量的组成的矩阵，由于相机操作和物体操作时相反的，所以应该是乘上如今相机的基向量的组成的矩阵的逆矩阵
+    look() {
+        /**
+         * 前提定义：
+         * 0、基于右手系，X 叉乘 Y 等于+Z，Y 叉乘 Z 等于+X
+         * 1、原相机-原本和世界坐标系重合的相机
+         * 2、先相机-原相机经过矩阵变化后等到现在的相机状态，也就是pos,lookAt,up组成的状态
+         *
+         * 视图变化个人理解:
+         * 0、视图变化目的就是将世界坐标系和相机坐标做一个统一，方便后面投影计算，因为统一了坐标系，默认将原点作为投影的出发点定义一些平面和参数
+         * 1、首先一个常识问题，对一个物体和相机以相同的方向和角度旋转，相机所观察到的画面是不不会变的，以互为相反的方向旋转，相机所观察的画面是我们显示生活中看到的画面
+         * 2、想象原相机在世界坐标系下原点位置，在经过旋转、平移等操作后，得到我们现在的相机状态，也就是相机坐标系，vecZ,vecX,vecY
+         * 3、由矩阵的本质，相机旋转、平移操作矩阵本质上就是现在相机坐标系的基向量，可以理解为原本和世界坐标系重合的相机经过现在的相机的基向量坐标系进行的矩阵变化
+         * 4、理论上我们只要将世界坐标系下的所有点都转换到相机坐标系下，也就是将所有世界左边乘上如今相机的基向量的组成的矩阵，由于相机操作和物体操作时相反的，所以应该是乘上如今相机的基向量的组成的矩阵的逆矩阵
+        */
         // 通过pos、lookAt、up求求现在相机的基向量
-        const vecZ = pos.sub(lookAt).normalize();
-        const vecX = up.cross(vecZ).normalize();
+        const vecZ = this.pos.sub(this.lookAt).normalize();
+        const vecX = this.up.cross(vecZ).normalize();
         const vecY = vecZ.cross(vecX).normalize();
-        // 现相机 = oriTransMat *  oriRotationMat * 原相机
-        // oriTransMat = new Matrix44([
-        //     [0, 0, 0, pos.x],
-        //     [0, 0, 0, pos.y],
-        //     [0, 0, 0, pos.z],
-        //     [0, 0, 0, 1]
-        // ])
-        // oriRotationMat = new Matrix44([
-        //     [vecX.x, vecY.x, vecZ.x, 0],
-        //     [vecX.y, vecY.y, vecZ.y, 0],
-        //     [vecX.z, vecY.z, vecZ.z, 0],
-        //     [0, 0, 0, 1]
-        // ])
-        // 现在将世界坐标系下的点转换到相机坐标系下，可以想象原相加到先相机也是一个世界坐标系下的坐标到现相机的坐标系下
-        // 考虑相机操作和物体是相反的操作，所以将世界坐标下的点等于
-        // 值得关注的是，求逆后是先平移后旋转
-        // (oriTransMat* oriRotationMat)^-1  =  oriRotationMat^-1 * oriTransMat^-1
+        /**
+         * oriTransMat：
+         * [0, 0, 0, pos.x],
+         * [0, 0, 0, pos.y],
+         * [0, 0, 0, pos.z],
+         * [0, 0, 0, 1]
+         *
+         * oriRotationMat:
+         * [vecX.x, vecY.x, vecZ]
+         * [vecX.y, vecY.y, vecZ]
+         * [vecX.z, vecY.z, vecZ]
+         * [0, 0, 0, 1]
+         *
+         * 现相机 = oriTransMat *  oriRotationMat * 原相机
+         *
+         * 现在将世界坐标系下的点转换到相机坐标系下，可以想象原相加到先相机也是一个世界坐标系下的坐标到现相机的坐标系下
+         * 考虑相机操作和物体是相反的操作，所以将世界坐标下的点等于
+         * 值得关注的是，求逆后是先平移后旋转
+         * (oriTransMat* oriRotationMat)^-1  =  oriRotationMat^-1 * oriTransMat^-1
+        */
         const revTransMat = new Matrix44([
-            [1, 0, 0, -pos.x],
-            [0, 1, 0, -pos.y],
-            [0, 0, 1, -pos.z],
+            [1, 0, 0, -this.pos.x],
+            [0, 1, 0, -this.pos.y],
+            [0, 0, 1, -this.pos.z],
             [0, 0, 0, 1]
         ]);
         const revRotationMat = new Matrix44([
@@ -6588,20 +6609,33 @@ class Camera {
         // 合成view矩阵，先平移后旋转
         return revRotationMat.multiply(revTransMat);
     }
-    projection(width, height) {
+    getViewMat() {
+        const baseViewMat = this.look();
+        return this.rotationMatExc.transpose().multiply(baseViewMat);
+    }
+    getProjectMat() {
         return new Matrix44();
+    }
+    rotatedCamera(mat) {
+        this.rotationMatExc = mat.multiply(this.rotationMatExc);
     }
 }
 
 class Raster {
     constructor(w, h, context) {
+        const defultCameraConfig = {
+            fovY: 45, aspect: w / h,
+            near: 0.1, far: 1000,
+            projectType: ProjectType.Orthogonal,
+            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 1), lookAt: new Vec3(0, 0, 0),
+        };
         this.width = w;
         this.height = h;
         this.fitType = "height";
         this.context = context;
         this.model = new webglObjLoader_minExports.Mesh(fileText);
         this.shader = new FlatShader(this);
-        this.camera = new Camera(45, w / h, 0.1, 1000, ProjectType.Orthogonal);
+        this.camera = new Camera(defultCameraConfig);
         this.vertexsBuffer = this.model.vertices;
         this.trianglseBuffer = this.model.indices;
         this.frameBuffer = new FrameBuffer(w, h);
@@ -6619,6 +6653,14 @@ class Raster {
     }
     render() {
         this.clear();
+        const temp = new Matrix44([
+            [1, 0, 0, 0],
+            [0, Math.cos(1 / 180 * Math.PI), -Math.sin(1 / 180 * Math.PI), 0],
+            [0, Math.sin(1 / 180 * Math.PI), Math.cos(1 / 180 * Math.PI), 0],
+            [0, 0, 0, 1]
+        ]);
+        this.camera.rotatedCamera(temp);
+        this.viewMatrix = this.camera.getViewMat();
         for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
             // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
             for (let j = 0; j < 3; j++) {
@@ -6634,13 +6676,11 @@ class Raster {
         }
         this.context.putImageData(this.frameBuffer.frameData, 0, 0);
     }
-    line(screenCoords) {
-    }
     triangle(screenCoords) {
         // 方式一：完整的遍历屏幕所有点，计算是否在三角形内，并进行着色
         for (let x = 0; x < this.width; x++) {
             for (let y = 0; y < this.height; y++) {
-                // const barycentric = this.barycentric(x, y, screenCoords)
+                // const c = barycentric(x, y, screenCoords)
             }
         }
     }
@@ -6670,11 +6710,8 @@ class Raster {
         //     [0, 0, 0, 1]
         // ])
         // 视图矩阵：将世界坐标系转换到相机坐标系，得到视图矩阵
-        const cameraUp = new Vec3(0, 1, 0);
-        const cameraPos = new Vec3(0, 0, 1);
-        const cameraLookAt = new Vec3(0, 0, 0);
-        this.viewMatrix = this.camera.lookAt(cameraPos, cameraLookAt, cameraUp);
-        // this.projectionMatrix = this.camera.projection(w, h, 45)
+        this.viewMatrix = this.camera.getViewMat();
+        this.projectionMatrix = this.camera.getProjectMat();
     }
 }
 
@@ -6694,9 +6731,21 @@ class App {
         };
         loop(0);
     }
+    static onMouseUp(e) { this.isMouseMoving = false; }
+    static onMouseDown(e) { this.isMouseMoving = true; }
+    static onMouseMove(e) {
+        if (!this.isMouseMoving)
+            return;
+        console.log(e.movementX);
+    }
     static mainLoop() {
         this.raster.render();
     }
 }
-App.init(document.getElementById("canvas"));
+App.isMouseMoving = false;
+const canvas = document.getElementById("canvas");
+canvas.onmousedown = App.onMouseDown.bind(App);
+canvas.onmouseup = App.onMouseUp.bind(App);
+canvas.onmousemove = App.onMouseMove.bind(App);
+App.init(canvas);
 App.start();

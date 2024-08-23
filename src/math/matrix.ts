@@ -70,4 +70,13 @@ export class Matrix44 extends Matrix {
 
         return new Vec4(result[0], result[1], result[2], result[3])
     }
+
+    public transpose(): Matrix44 {
+        const result = new Matrix44()
+        result.setRow(0, [this.data[0][0], this.data[1][0], this.data[2][0], -this.data[0][3]])
+        result.setRow(1, [this.data[0][1], this.data[1][1], this.data[2][1], -this.data[1][3]])
+        result.setRow(2, [this.data[0][2], this.data[1][2], this.data[2][2], -this.data[2][3]])
+        result.setRow(3, [0, 0, 0, 1])
+        return result
+    }
 }
