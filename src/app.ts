@@ -35,7 +35,32 @@ class App {
 
     public static onMouseMove(e: MouseEvent) {
         if (!this.isMouseMoving) return
-        console.log(e.movementX)
+        this.raster.camera.rotatedCamera(new Matrix44().rotateY(Math.sign(e.movementX) * 5 / 180 * Math.PI))
+        // this.raster.camera.rotatedCamera(new Matrix44().rotateX(Math.sign(e.movementY) * 1 / 180 * Math.PI))
+    }
+
+    public static onKeyDown(e: KeyboardEvent) {
+
+
+        switch (e.code) {
+            case "KeyW":
+                this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, -10))
+                break;
+
+            case "KeyS":
+                this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, 10))
+                break;
+                d
+            case "KeyA":
+                this.raster.camera.translatedCamera(new Matrix44().translate(-10, 0, 0))
+                break;
+
+            case "KeyD":
+                this.raster.camera.translatedCamera(new Matrix44().translate(10, 0, 0))
+                break;
+
+        }
+
     }
 
     public static mainLoop() {
@@ -44,6 +69,7 @@ class App {
 }
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement
+window.onkeydown = App.onKeyDown.bind(App)
 canvas.onmousedown = App.onMouseDown.bind(App)
 canvas.onmouseup = App.onMouseUp.bind(App)
 canvas.onmousemove = App.onMouseMove.bind(App)

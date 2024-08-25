@@ -6537,6 +6537,47 @@ class Matrix44 extends Matrix {
         result.setRow(3, [0, 0, 0, 1]);
         return result;
     }
+    translate(x, y, z) {
+        const translateMat = new Matrix44();
+        translateMat.setCol(3, [x, y, z, 1]);
+        this.data = translateMat.multiply(this).data;
+        return this;
+    }
+    rotateX(angle) {
+        const rotateMat = new Matrix44();
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        rotateMat.setCol(1, [0, cos, -sin, 0]);
+        rotateMat.setCol(2, [0, sin, cos, 0]);
+        this.data = rotateMat.multiply(this).data;
+        return this;
+    }
+    rotateY(angle) {
+        const rotateMat = new Matrix44();
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        rotateMat.setCol(0, [cos, 0, sin, 0]);
+        rotateMat.setCol(2, [-sin, 0, cos, 0]);
+        this.data = rotateMat.multiply(this).data;
+        return this;
+    }
+    rotateZ(angle) {
+        const rotateMat = new Matrix44();
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        rotateMat.setCol(0, [cos, -sin, 0, 0]);
+        rotateMat.setCol(1, [sin, cos, 0, 0]);
+        this.data = rotateMat.multiply(this).data;
+        return this;
+    }
+    scale(x, y, z) {
+        const scaleMat = new Matrix44();
+        scaleMat.setCol(0, [x, 0, 0, 0]);
+        scaleMat.setCol(1, [0, y, 0, 0]);
+        scaleMat.setCol(2, [0, 0, z, 0]);
+        this.data = scaleMat.multiply(this).data;
+        return this;
+    }
 }
 
 var ProjectType;
@@ -6631,13 +6672,36 @@ class Camera {
         ]);
         return scaleMat.multiply(transMat);
     }
+    perspective() {
+        const fov = this.fovY * Math.PI / 180;
+        const aspect = this.aspect;
+        const near = this.near;
+        const far = this.far;
+        const tanHalfFov = Math.tan(fov / 2);
+        const scaleMat = new Matrix44([
+            [1 / (aspect * tanHalfFov), 0, 0, 0],
+            [0, 1 / tanHalfFov, 0, 0],
+            [0, 0, -(far + near) / (far - near), -2 * far * near / (far - near)],
+            [0, 0, -1, 0]
+        ]);
+        const transMat = new Matrix44([
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 1]
+        ]);
+        return scaleMat.multiply(transMat);
+    }
     getViewMat() {
         const baseViewMat = this.look();
-        return this.rotationMatExc.transpose().multiply(baseViewMat);
+        return this.transMatExc.transpose().multiply(this.rotationMatExc.transpose().multiply(baseViewMat));
     }
     getProjectMat() {
         if (this.projectType == ProjectType.Orthogonal) {
             return this.orthogonal();
+        }
+        else {
+            return this.perspective();
         }
     }
     rotatedCamera(mat) {
@@ -6667,7 +6731,7 @@ class Raster {
         this.vertexsBuffer = this.model.vertices;
         this.trianglseBuffer = this.model.indices;
         this.frameBuffer = new FrameBuffer(w, h);
-        this.initMatrix();
+        this.resetMatrix();
         console.log(this.model);
     }
     clear() {
@@ -6680,7 +6744,10 @@ class Raster {
         }
     }
     render() {
+        // 清理帧缓冲区
         this.clear();
+        // 刷新矩阵
+        this.resetMatrix();
         for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
             // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
             for (let j = 0; j < 3; j++) {
@@ -6700,7 +6767,7 @@ class Raster {
     }
     triangle(screenCoords) {
     }
-    initMatrix() {
+    resetMatrix() {
         // 模型矩阵：对模型进行平移、旋转、缩放等操作，得到模型矩阵
         // 这里模型文件坐标系也是右手系，且顶点坐标范围在-1^3到1^3之间,所以模型需要缩放下
         // 对模型的Z坐标进行平移，使得模型在相机前方(我们定义的相机在z=1上，往-z方向看)
@@ -6712,7 +6779,7 @@ class Raster {
         ]);
         // 视图矩阵：将世界坐标系转换到观察(相机)坐标系，得到视图矩阵
         this.viewMatrix = this.camera.getViewMat();
-        // 投影矩阵：通过定义的观察空间范围(近平面、远平面、fov、aspset等参数定义)，将该空间坐标映射到-1^3到1^3的范围，得到投影矩阵
+        // 投影矩阵：通过定义的观察空间范围(近平面、远平面、fov、aspset等参数定义)，将该空间坐标映射到-1^3到1^3的范围（NDC空间），得到投影矩阵
         // 值得注意的是，投影矩阵在经过视图矩阵变换后，坐标系的已经是观察坐标系，相机默认在原点上，且关于空间的定义也是基于这个坐标系
         // 这里可以很方便做空间裁剪，z坐标不在-1~1范围内的物体将被裁剪掉
         this.projectionMatrix = this.camera.getProjectMat();
@@ -6748,7 +6815,24 @@ class App {
     static onMouseMove(e) {
         if (!this.isMouseMoving)
             return;
-        console.log(e.movementX);
+        this.raster.camera.rotatedCamera(new Matrix44().rotateY(Math.sign(e.movementX) * 5 / 180 * Math.PI));
+        // this.raster.camera.rotatedCamera(new Matrix44().rotateX(Math.sign(e.movementY) * 1 / 180 * Math.PI))
+    }
+    static onKeyDown(e) {
+        switch (e.code) {
+            case "KeyW":
+                this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, -10));
+                break;
+            case "KeyS":
+                this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, 10));
+                break;
+            case "KeyA":
+                this.raster.camera.translatedCamera(new Matrix44().translate(-10, 0, 0));
+                break;
+            case "KeyD":
+                this.raster.camera.translatedCamera(new Matrix44().translate(10, 0, 0));
+                break;
+        }
     }
     static mainLoop() {
         this.raster.render();
@@ -6756,6 +6840,7 @@ class App {
 }
 App.isMouseMoving = false;
 const canvas = document.getElementById("canvas");
+window.onkeydown = App.onKeyDown.bind(App);
 canvas.onmousedown = App.onMouseDown.bind(App);
 canvas.onmouseup = App.onMouseUp.bind(App);
 canvas.onmousemove = App.onMouseMove.bind(App);

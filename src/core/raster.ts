@@ -18,9 +18,9 @@ export class Raster {
     private vertexsBuffer: Array<number>
     private trianglseBuffer: Array<number>
 
-    private model: Mesh
-    private shader: Shader
-    private camera: Camera
+    public model: Mesh
+    public shader: Shader
+    public camera: Camera
 
     public viewMatrix: Matrix44
     public modelMatrix: Matrix44
@@ -28,7 +28,6 @@ export class Raster {
     public projectionMatrix: Matrix44
 
     private context: CanvasRenderingContext2D
-
 
     constructor(w: number, h: number, context: CanvasRenderingContext2D) {
 
@@ -53,7 +52,7 @@ export class Raster {
         this.trianglseBuffer = this.model.indices
         this.frameBuffer = new FrameBuffer(w, h)
 
-        this.initMatrix()
+        this.resetMatrix()
         console.log(this.model)
     }
 
@@ -70,7 +69,12 @@ export class Raster {
     }
 
     public render() {
+        // 清理帧缓冲区
         this.clear()
+
+        // 刷新矩阵
+        this.resetMatrix()
+
 
         for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
 
@@ -97,7 +101,7 @@ export class Raster {
     public triangle(screenCoords: Array<Vec4>) {
     }
 
-    public initMatrix() {
+    public resetMatrix() {
 
         // 模型矩阵：对模型进行平移、旋转、缩放等操作，得到模型矩阵
         // 这里模型文件坐标系也是右手系，且顶点坐标范围在-1^3到1^3之间,所以模型需要缩放下
@@ -112,7 +116,7 @@ export class Raster {
         // 视图矩阵：将世界坐标系转换到观察(相机)坐标系，得到视图矩阵
         this.viewMatrix = this.camera.getViewMat()
 
-        // 投影矩阵：通过定义的观察空间范围(近平面、远平面、fov、aspset等参数定义)，将该空间坐标映射到-1^3到1^3的范围，得到投影矩阵
+        // 投影矩阵：通过定义的观察空间范围(近平面、远平面、fov、aspset等参数定义)，将该空间坐标映射到-1^3到1^3的范围（NDC空间），得到投影矩阵
         // 值得注意的是，投影矩阵在经过视图矩阵变换后，坐标系的已经是观察坐标系，相机默认在原点上，且关于空间的定义也是基于这个坐标系
         // 这里可以很方便做空间裁剪，z坐标不在-1~1范围内的物体将被裁剪掉
         this.projectionMatrix = this.camera.getProjectMat()

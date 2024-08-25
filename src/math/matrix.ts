@@ -79,4 +79,50 @@ export class Matrix44 extends Matrix {
         result.setRow(3, [0, 0, 0, 1])
         return result
     }
+
+    public translate(x: number, y: number, z: number): Matrix44 {
+        const translateMat = new Matrix44()
+        translateMat.setCol(3, [x, y, z, 1])
+        this.data = translateMat.multiply(this).data
+        return this
+    }
+
+    public rotateX(angle: number): Matrix44 {
+        const rotateMat = new Matrix44()
+        const cos = Math.cos(angle)
+        const sin = Math.sin(angle)
+        rotateMat.setCol(1, [0, cos, -sin, 0])
+        rotateMat.setCol(2, [0, sin, cos, 0])
+        this.data = rotateMat.multiply(this).data
+        return this
+    }
+
+    public rotateY(angle: number): Matrix44 {
+        const rotateMat = new Matrix44()
+        const cos = Math.cos(angle)
+        const sin = Math.sin(angle)
+        rotateMat.setCol(0, [cos, 0, sin, 0])
+        rotateMat.setCol(2, [-sin, 0, cos, 0])
+        this.data = rotateMat.multiply(this).data
+        return this
+    }
+
+    public rotateZ(angle: number): Matrix44 {
+        const rotateMat = new Matrix44()
+        const cos = Math.cos(angle)
+        const sin = Math.sin(angle)
+        rotateMat.setCol(0, [cos, -sin, 0, 0])
+        rotateMat.setCol(1, [sin, cos, 0, 0])
+        this.data = rotateMat.multiply(this).data
+        return this
+    }
+
+    public scale(x: number, y: number, z: number): Matrix44 {
+        const scaleMat = new Matrix44()
+        scaleMat.setCol(0, [x, 0, 0, 0])
+        scaleMat.setCol(1, [0, y, 0, 0])
+        scaleMat.setCol(2, [0, 0, z, 0])
+        this.data = scaleMat.multiply(this).data
+        return this
+    }
 }

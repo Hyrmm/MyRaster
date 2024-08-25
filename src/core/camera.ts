@@ -143,14 +143,41 @@ export class Camera {
         return scaleMat.multiply(transMat)
     }
 
+    public perspective(): Matrix44 {
+        const fov = this.fovY * Math.PI / 180
+        const aspect = this.aspect
+        const near = this.near
+        const far = this.far
+
+        const tanHalfFov = Math.tan(fov / 2)
+
+        const scaleMat = new Matrix44([
+            [1 / (aspect * tanHalfFov), 0, 0, 0],
+            [0, 1 / tanHalfFov, 0, 0],
+            [0, 0, -(far + near) / (far - near), -2 * far * near / (far - near)],
+            [0, 0, -1, 0]
+        ])
+
+        const transMat = new Matrix44([
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 1]
+        ])
+
+        return scaleMat.multiply(transMat)
+    }
+
     public getViewMat(): Matrix44 {
         const baseViewMat = this.look()
-        return this.rotationMatExc.transpose().multiply(baseViewMat)
+        return this.transMatExc.transpose().multiply(this.rotationMatExc.transpose().multiply(baseViewMat))
     }
 
     public getProjectMat(): Matrix44 {
         if (this.projectType == ProjectType.Orthogonal) {
             return this.orthogonal()
+        } else {
+            return this.perspective()
         }
     }
 
