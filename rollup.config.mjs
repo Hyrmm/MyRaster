@@ -5,7 +5,8 @@ export default {
 	input: 'src/app.ts',
 	output: {
 		file: './dist/app.js',
-		format: 'cjs'
+		format: 'cjs',
+		sourcemap: true,
 	},
 	"esModuleInterop": true,
 	"skipLibCheck": true,

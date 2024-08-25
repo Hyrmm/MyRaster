@@ -25,12 +25,13 @@ export class GouraudShader extends Shader {
 export class FlatShader extends Shader {
 
     public vertexShader(vertex: Vec3): Vec4 {
-        const viewMatrix = this.raster.viewMatrix
         const modelMatrix = this.raster.modelMatrix
-        const viewPortMatrix = this.raster.viewPortMatrix
-        // const projectionMatrix = this.raster.projectionMatrix
+        const viewMatrix = this.raster.viewMatrix
+        const projectionMatrix = this.raster.projectionMatrix
+        const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
 
-        const mergedMatrix = viewPortMatrix.multiply(viewMatrix.multiply(modelMatrix))
+        const viewPortMatrix = this.raster.viewPortMatrix
+        const mergedMatrix = viewPortMatrix.multiply(mvpMatrix)
 
         return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1))
     }

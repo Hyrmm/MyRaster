@@ -6462,11 +6462,12 @@ class Shader {
 }
 class FlatShader extends Shader {
     vertexShader(vertex) {
-        const viewMatrix = this.raster.viewMatrix;
         const modelMatrix = this.raster.modelMatrix;
+        const viewMatrix = this.raster.viewMatrix;
+        const projectionMatrix = this.raster.projectionMatrix;
+        const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix));
         const viewPortMatrix = this.raster.viewPortMatrix;
-        // const projectionMatrix = this.raster.projectionMatrix
-        const mergedMatrix = viewPortMatrix.multiply(viewMatrix.multiply(modelMatrix));
+        const mergedMatrix = viewPortMatrix.multiply(mvpMatrix);
         return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1));
     }
     fragmentShader() {
@@ -6553,6 +6554,8 @@ class Camera {
         this.up = params.up;
         this.pos = params.pos;
         this.lookAt = params.lookAt;
+        this.screenWidth = params.sceenWidth;
+        this.screenHeight = params.sceenHeight;
         this.transMatExc = new Matrix44();
         this.rotationMatExc = new Matrix44();
     }
@@ -6609,15 +6612,39 @@ class Camera {
         // 合成view矩阵，先平移后旋转
         return revRotationMat.multiply(revTransMat);
     }
+    orthogonal() {
+        const left = -this.screenWidth / 2;
+        const right = this.screenWidth / 2;
+        const bottom = -this.screenHeight / 2;
+        const top = this.screenHeight / 2;
+        const scaleMat = new Matrix44([
+            [2 / (right - left), 0, 0, 0],
+            [0, 2 / (top - bottom), 0, 0],
+            [0, 0, 2 / (this.near - this.far), 0],
+            [0, 0, 0, 1]
+        ]);
+        const transMat = new Matrix44([
+            [1, 0, 0, -((right + left) / 2)],
+            [0, 1, 0, -((top + bottom) / 2)],
+            [0, 0, 1, -((this.far + this.near) / 2)],
+            [0, 0, 0, 1]
+        ]);
+        return scaleMat.multiply(transMat);
+    }
     getViewMat() {
         const baseViewMat = this.look();
         return this.rotationMatExc.transpose().multiply(baseViewMat);
     }
     getProjectMat() {
-        return new Matrix44();
+        if (this.projectType == ProjectType.Orthogonal) {
+            return this.orthogonal();
+        }
     }
     rotatedCamera(mat) {
         this.rotationMatExc = mat.multiply(this.rotationMatExc);
+    }
+    translatedCamera(mat) {
+        this.transMatExc = mat.multiply(this.transMatExc);
     }
 }
 
@@ -6625,9 +6652,10 @@ class Raster {
     constructor(w, h, context) {
         const defultCameraConfig = {
             fovY: 45, aspect: w / h,
-            near: 0.1, far: 1000,
+            near: -0.1, far: -1024,
             projectType: ProjectType.Orthogonal,
             up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 1), lookAt: new Vec3(0, 0, 0),
+            sceenHeight: h, sceenWidth: w
         };
         this.width = w;
         this.height = h;
@@ -6653,14 +6681,6 @@ class Raster {
     }
     render() {
         this.clear();
-        const temp = new Matrix44([
-            [1, 0, 0, 0],
-            [0, Math.cos(1 / 180 * Math.PI), -Math.sin(1 / 180 * Math.PI), 0],
-            [0, Math.sin(1 / 180 * Math.PI), Math.cos(1 / 180 * Math.PI), 0],
-            [0, 0, 0, 1]
-        ]);
-        this.camera.rotatedCamera(temp);
-        this.viewMatrix = this.camera.getViewMat();
         for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
             // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
             for (let j = 0; j < 3; j++) {
@@ -6668,6 +6688,8 @@ class Raster {
                 const vertex = new Vec3(this.vertexsBuffer[idx * 3 + 0], this.vertexsBuffer[idx * 3 + 1], this.vertexsBuffer[idx * 3 + 2]);
                 const vertexScreen = this.shader.vertexShader(vertex);
                 // screenCoords.push(this.shader.vertexShader(vertex))
+                if (vertexScreen.z < -1 || vertexScreen.z > 1)
+                    continue;
                 this.frameBuffer.setPixel(vertexScreen.x, vertexScreen.y, [255, 0, 0, 255]);
             }
             // console.log(screenCoords)
@@ -6677,41 +6699,31 @@ class Raster {
         this.context.putImageData(this.frameBuffer.frameData, 0, 0);
     }
     triangle(screenCoords) {
-        // 方式一：完整的遍历屏幕所有点，计算是否在三角形内，并进行着色
-        for (let x = 0; x < this.width; x++) {
-            for (let y = 0; y < this.height; y++) {
-                // const c = barycentric(x, y, screenCoords)
-            }
-        }
     }
     initMatrix() {
         // 模型矩阵：对模型进行平移、旋转、缩放等操作，得到模型矩阵
+        // 这里模型文件坐标系也是右手系，且顶点坐标范围在-1^3到1^3之间,所以模型需要缩放下
+        // 对模型的Z坐标进行平移，使得模型在相机前方(我们定义的相机在z=1上，往-z方向看)
         this.modelMatrix = new Matrix44([
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
+            [240, 0, 0, 0],
+            [0, 240, 0, 0],
+            [0, 0, 240, -400],
             [0, 0, 0, 1]
         ]);
-        // 视口矩阵：将相机坐标系转换到裁剪坐标系，得到视口矩阵
-        const screenAspect = this.fitType == "height" ? this.width / this.height : this.height / this.width;
-        const scaleHigh = this.fitType == "height" ? this.height / 2 : this.height / 2 / screenAspect;
-        const scaleWidth = this.fitType == "height" ? this.width / 2 / screenAspect : this.width / 2;
-        // 这里-scaleHigh是因为屏幕坐标系的原点在左上角，而模型坐标系的原点在中心,要进行坐标反转
-        this.viewPortMatrix = new Matrix44([
-            [scaleWidth, 0, 0, this.width / 2],
-            [0, -scaleHigh, 0, this.height / 2],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
-        ]);
-        // this.viewPortMatrix = new Matrix44([
-        //     [this.width / 2, 0, 0, this.width / 2],
-        //     [0, -this.height / 2, 0, this.height / 2],
-        //     [0, 0, 1, 0],
-        //     [0, 0, 0, 1]
-        // ])
-        // 视图矩阵：将世界坐标系转换到相机坐标系，得到视图矩阵
+        // 视图矩阵：将世界坐标系转换到观察(相机)坐标系，得到视图矩阵
         this.viewMatrix = this.camera.getViewMat();
+        // 投影矩阵：通过定义的观察空间范围(近平面、远平面、fov、aspset等参数定义)，将该空间坐标映射到-1^3到1^3的范围，得到投影矩阵
+        // 值得注意的是，投影矩阵在经过视图矩阵变换后，坐标系的已经是观察坐标系，相机默认在原点上，且关于空间的定义也是基于这个坐标系
+        // 这里可以很方便做空间裁剪，z坐标不在-1~1范围内的物体将被裁剪掉
         this.projectionMatrix = this.camera.getProjectMat();
+        // 视口矩阵：将观察坐标系转换到屏幕坐标系，得到视口矩阵
+        // 这里-this.height是因为canvas屏幕坐标系的原点在左上角，而模型坐标系的原点在中心,要进行坐标反转
+        this.viewPortMatrix = new Matrix44([
+            [this.width / 2, 0, 0, this.width / 2],
+            [0, -this.height / 2, 0, this.height / 2],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ]);
     }
 }
 
@@ -6749,3 +6761,4 @@ canvas.onmouseup = App.onMouseUp.bind(App);
 canvas.onmousemove = App.onMouseMove.bind(App);
 App.init(canvas);
 App.start();
+//# sourceMappingURL=app.js.map

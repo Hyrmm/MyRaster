@@ -7,6 +7,8 @@ export enum ProjectType {
 }
 
 export type CameraParam = {
+    sceenWidth: number,
+    sceenHeight: number,
     fovY: number,
     aspect: number,
     near: number,
@@ -27,6 +29,9 @@ export class Camera {
     private near: number
 
     private projectType: ProjectType
+
+    private screenWidth: number
+    private screenHeight: number
 
     private up: Vec3
     private pos: Vec3
@@ -49,6 +54,9 @@ export class Camera {
         this.up = params.up
         this.pos = params.pos
         this.lookAt = params.lookAt
+
+        this.screenWidth = params.sceenWidth
+        this.screenHeight = params.sceenHeight
 
         this.transMatExc = new Matrix44()
         this.rotationMatExc = new Matrix44()
@@ -112,16 +120,45 @@ export class Camera {
         return revRotationMat.multiply(revTransMat)
     }
 
+    public orthogonal(): Matrix44 {
+
+        const left = -this.screenWidth / 2
+        const right = this.screenWidth / 2
+        const bottom = -this.screenHeight / 2
+        const top = this.screenHeight / 2
+
+        const scaleMat = new Matrix44([
+            [2 / (right - left), 0, 0, 0],
+            [0, 2 / (top - bottom), 0, 0],
+            [0, 0, 2 / (this.near - this.far), 0],
+            [0, 0, 0, 1]
+        ])
+
+        const transMat = new Matrix44([
+            [1, 0, 0, -((right + left) / 2)],
+            [0, 1, 0, -((top + bottom) / 2)],
+            [0, 0, 1, -((this.far + this.near) / 2)],
+            [0, 0, 0, 1]
+        ])
+        return scaleMat.multiply(transMat)
+    }
+
     public getViewMat(): Matrix44 {
         const baseViewMat = this.look()
         return this.rotationMatExc.transpose().multiply(baseViewMat)
     }
 
     public getProjectMat(): Matrix44 {
-        return new Matrix44()
+        if (this.projectType == ProjectType.Orthogonal) {
+            return this.orthogonal()
+        }
     }
 
     public rotatedCamera(mat: Matrix44): void {
         this.rotationMatExc = mat.multiply(this.rotationMatExc)
+    }
+
+    public translatedCamera(mat: Matrix44): void {
+        this.transMatExc = mat.multiply(this.transMatExc)
     }
 }
