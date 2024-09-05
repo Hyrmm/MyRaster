@@ -6673,24 +6673,12 @@ class Camera {
         return scaleMat.multiply(transMat);
     }
     perspective() {
-        const fov = this.fovY * Math.PI / 180;
-        const aspect = this.aspect;
-        const near = this.near;
-        const far = this.far;
-        const tanHalfFov = Math.tan(fov / 2);
-        const scaleMat = new Matrix44([
-            [1 / (aspect * tanHalfFov), 0, 0, 0],
-            [0, 1 / tanHalfFov, 0, 0],
-            [0, 0, -(far + near) / (far - near), -2 * far * near / (far - near)],
-            [0, 0, -1, 0]
+        return new Matrix44([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 1, 1]
         ]);
-        const transMat = new Matrix44([
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 1]
-        ]);
-        return scaleMat.multiply(transMat);
     }
     getViewMat() {
         const baseViewMat = this.look();
@@ -6701,7 +6689,7 @@ class Camera {
             return this.orthogonal();
         }
         else {
-            return this.perspective();
+            return this.orthogonal().multiply(this.perspective());
         }
     }
     rotatedCamera(mat) {
@@ -6716,14 +6704,13 @@ class Raster {
     constructor(w, h, context) {
         const defultCameraConfig = {
             fovY: 45, aspect: w / h,
-            near: -0.1, far: -1024,
+            near: -0, far: -400,
             projectType: ProjectType.Orthogonal,
             up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 1), lookAt: new Vec3(0, 0, 0),
             sceenHeight: h, sceenWidth: w
         };
         this.width = w;
         this.height = h;
-        this.fitType = "height";
         this.context = context;
         this.model = new webglObjLoader_minExports.Mesh(fileText);
         this.shader = new FlatShader(this);
@@ -6757,7 +6744,7 @@ class Raster {
                 // screenCoords.push(this.shader.vertexShader(vertex))
                 if (vertexScreen.z < -1 || vertexScreen.z > 1)
                     continue;
-                this.frameBuffer.setPixel(vertexScreen.x, vertexScreen.y, [255, 0, 0, 255]);
+                this.frameBuffer.setPixel(vertexScreen.x / vertexScreen.w, vertexScreen.y / vertexScreen.w, [255, 0, 0, 255]);
             }
             // console.log(screenCoords)
             // // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
@@ -6774,7 +6761,7 @@ class Raster {
         this.modelMatrix = new Matrix44([
             [240, 0, 0, 0],
             [0, 240, 0, 0],
-            [0, 0, 240, -400],
+            [0, 0, 240, -240],
             [0, 0, 0, 1]
         ]);
         // 视图矩阵：将世界坐标系转换到观察(相机)坐标系，得到视图矩阵
@@ -6815,23 +6802,27 @@ class App {
     static onMouseMove(e) {
         if (!this.isMouseMoving)
             return;
-        this.raster.camera.rotatedCamera(new Matrix44().rotateY(Math.sign(e.movementX) * 5 / 180 * Math.PI));
+        this.raster.camera.rotatedCamera(new Matrix44().rotateY(Math.sign(e.movementX) * 2 / 180 * Math.PI));
         // this.raster.camera.rotatedCamera(new Matrix44().rotateX(Math.sign(e.movementY) * 1 / 180 * Math.PI))
     }
     static onKeyDown(e) {
         switch (e.code) {
-            case "KeyW":
+            case "KeyW": {
                 this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, -10));
                 break;
-            case "KeyS":
+            }
+            case "KeyS": {
                 this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, 10));
                 break;
-            case "KeyA":
+            }
+            case "KeyA": {
                 this.raster.camera.translatedCamera(new Matrix44().translate(-10, 0, 0));
                 break;
-            case "KeyD":
+            }
+            case "KeyD": {
                 this.raster.camera.translatedCamera(new Matrix44().translate(10, 0, 0));
                 break;
+            }
         }
     }
     static mainLoop() {

@@ -12,7 +12,6 @@ export class Raster {
 
     private width: number
     private height: number
-    private fitType: string
 
     private frameBuffer: FrameBuffer
     private vertexsBuffer: Array<number>
@@ -33,7 +32,7 @@ export class Raster {
 
         const defultCameraConfig: CameraParam = {
             fovY: 45, aspect: w / h,
-            near: -0.1, far: -1024,
+            near: -0, far: -400,
             projectType: ProjectType.Orthogonal,
             up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 1), lookAt: new Vec3(0, 0, 0),
             sceenHeight: h, sceenWidth: w
@@ -41,7 +40,6 @@ export class Raster {
 
         this.width = w
         this.height = h
-        this.fitType = "height"
 
         this.context = context
         this.model = new Mesh(african_head)
@@ -87,7 +85,7 @@ export class Raster {
                 const vertexScreen = this.shader.vertexShader(vertex)
                 // screenCoords.push(this.shader.vertexShader(vertex))
                 if (vertexScreen.z < -1 || vertexScreen.z > 1) continue
-                this.frameBuffer.setPixel(vertexScreen.x, vertexScreen.y, [255, 0, 0, 255])
+                this.frameBuffer.setPixel(vertexScreen.x / vertexScreen.w, vertexScreen.y / vertexScreen.w, [255, 0, 0, 255])
             }
             // console.log(screenCoords)
             // // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
@@ -109,7 +107,7 @@ export class Raster {
         this.modelMatrix = new Matrix44([
             [240, 0, 0, 0],
             [0, 240, 0, 0],
-            [0, 0, 240, -400],
+            [0, 0, 240, -240],
             [0, 0, 0, 1]
         ])
 

@@ -35,7 +35,7 @@ class App {
 
     public static onMouseMove(e: MouseEvent) {
         if (!this.isMouseMoving) return
-        this.raster.camera.rotatedCamera(new Matrix44().rotateY(Math.sign(e.movementX) * 5 / 180 * Math.PI))
+        this.raster.camera.rotatedCamera(new Matrix44().rotateY(Math.sign(e.movementX) * 2 / 180 * Math.PI))
         // this.raster.camera.rotatedCamera(new Matrix44().rotateX(Math.sign(e.movementY) * 1 / 180 * Math.PI))
     }
 
@@ -43,21 +43,22 @@ class App {
 
 
         switch (e.code) {
-            case "KeyW":
+            case "KeyW": {
                 this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, -10))
                 break;
-
-            case "KeyS":
+            }
+            case "KeyS": {
                 this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, 10))
                 break;
-                d
-            case "KeyA":
+            }
+            case "KeyA": {
                 this.raster.camera.translatedCamera(new Matrix44().translate(-10, 0, 0))
                 break;
-
-            case "KeyD":
+            }
+            case "KeyD": {
                 this.raster.camera.translatedCamera(new Matrix44().translate(10, 0, 0))
                 break;
+            }
 
         }
 
