@@ -10,6 +10,15 @@ export class Vec3 {
         this.z = z
     }
 
+    static sub(v1: Vec3, v2: Vec3): Vec3 {
+        return new Vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z)
+    }
+
+    static dot(v1: Vec3, v2: Vec3): number {
+        return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
+    }
+
+
     public sub(v: Vec3): Vec3 {
         return new Vec3(this.x - v.x, this.y - v.y, this.z - v.z)
     }

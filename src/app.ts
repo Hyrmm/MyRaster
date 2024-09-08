@@ -20,9 +20,11 @@ class App {
 
         const loop = (timestamp: number) => {
             const delt = timestamp - last
-            document.getElementById("fps")!.innerText = `FPS:${(1000 / delt).toFixed(0)}`
-            this.mainLoop()
-            last = timestamp
+            if (delt > 33.333) {
+                document.getElementById("fps")!.innerText = `FPS:${(1000 / delt).toFixed(0)}`
+                this.mainLoop()
+                last = timestamp
+            }
             requestAnimationFrame(loop)
         }
 

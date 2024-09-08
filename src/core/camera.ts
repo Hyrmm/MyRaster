@@ -144,12 +144,11 @@ export class Camera {
     }
 
     public perspective(): Matrix44 {
-
         return new Matrix44([
             [1, 0, 0, 0],
             [0, 1, 0, 0],
             [0, 0, 1, 0],
-            [0, 0, 1, 1]
+            [0, 0, 0, 1]
         ])
     }
 

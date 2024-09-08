@@ -6426,6 +6426,12 @@ class Vec3 {
         this.y = y;
         this.z = z;
     }
+    static sub(v1, v2) {
+        return new Vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
+    }
+    static dot(v1, v2) {
+        return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+    }
     sub(v) {
         return new Vec3(this.x - v.x, this.y - v.y, this.z - v.z);
     }
@@ -6457,7 +6463,7 @@ class Vec4 {
 
 class Shader {
     constructor(raster) { this.raster = raster; }
-    vertexShader(vertex) { return new Vec4(0, 0, 0, 0); }
+    vertexShader(vertex) { return new Vec3(0, 0, 0); }
     fragmentShader(vertex1, vertex2, vertex3) { }
 }
 class FlatShader extends Shader {
@@ -6468,7 +6474,7 @@ class FlatShader extends Shader {
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix));
         const viewPortMatrix = this.raster.viewPortMatrix;
         const mergedMatrix = viewPortMatrix.multiply(mvpMatrix);
-        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1));
+        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3();
     }
     fragmentShader() {
     }
@@ -6677,7 +6683,7 @@ class Camera {
             [1, 0, 0, 0],
             [0, 1, 0, 0],
             [0, 0, 1, 0],
-            [0, 0, 1, 1]
+            [0, 0, 0, 1]
         ]);
     }
     getViewMat() {
@@ -6699,6 +6705,17 @@ class Camera {
         this.transMatExc = mat.multiply(this.transMatExc);
     }
 }
+
+const barycentric = (triangles, p) => {
+    const a = triangles[0];
+    const b = triangles[1];
+    const c = triangles[2];
+    const denominator = (b.y - c.y) * (a.x - c.x) + (c.x - b.x) * (a.y - c.y);
+    const lambda1 = ((b.y - c.y) * (p.x - c.x) + (c.x - b.x) * (p.y - c.y)) / denominator;
+    const lambda2 = ((c.y - a.y) * (p.x - c.x) + (a.x - c.x) * (p.y - c.y)) / denominator;
+    const lambda3 = 1 - lambda1 - lambda2;
+    return new Vec3(lambda1, lambda2, lambda3);
+};
 
 class Raster {
     constructor(w, h, context) {
@@ -6733,26 +6750,37 @@ class Raster {
     render() {
         // 清理帧缓冲区
         this.clear();
-        // 刷新矩阵
+        // 重置矩阵矩阵
         this.resetMatrix();
         for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
+            const screenCoords = [];
             // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
             for (let j = 0; j < 3; j++) {
                 const idx = this.trianglseBuffer[i + j];
                 const vertex = new Vec3(this.vertexsBuffer[idx * 3 + 0], this.vertexsBuffer[idx * 3 + 1], this.vertexsBuffer[idx * 3 + 2]);
-                const vertexScreen = this.shader.vertexShader(vertex);
-                // screenCoords.push(this.shader.vertexShader(vertex))
-                if (vertexScreen.z < -1 || vertexScreen.z > 1)
-                    continue;
-                this.frameBuffer.setPixel(vertexScreen.x / vertexScreen.w, vertexScreen.y / vertexScreen.w, [255, 0, 0, 255]);
+                this.shader.vertexShader(vertex);
+                // if (vertexScreen.z < -1 || vertexScreen.z > 1) continue
+                screenCoords.push(this.shader.vertexShader(vertex));
             }
-            // console.log(screenCoords)
             // // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
-            // this.triangle(screenCoords)
+            this.triangle(screenCoords);
         }
         this.context.putImageData(this.frameBuffer.frameData, 0, 0);
     }
     triangle(screenCoords) {
+        const minx = Math.floor(Math.min(screenCoords[0].x, Math.min(screenCoords[1].x, screenCoords[2].x)));
+        const maxx = Math.ceil(Math.max(screenCoords[0].x, Math.max(screenCoords[1].x, screenCoords[2].x)));
+        const miny = Math.floor(Math.min(screenCoords[0].y, Math.min(screenCoords[1].y, screenCoords[2].y)));
+        const maxy = Math.ceil(Math.max(screenCoords[0].y, Math.max(screenCoords[1].y, screenCoords[2].y)));
+        for (let w = minx; w <= maxx; w++) {
+            for (let h = miny; h <= maxy; h++) {
+                const b = barycentric(screenCoords, new Vec3(w, h, 0));
+                if (b.x < 0 || b.y < 0 || b.z < 0)
+                    continue;
+                this.frameBuffer.setPixel(w, h, [0, 255, 0, 255]);
+                // console.log(1)
+            }
+        }
     }
     resetMatrix() {
         // 模型矩阵：对模型进行平移、旋转、缩放等操作，得到模型矩阵
@@ -6790,9 +6818,11 @@ class App {
         let last = 0;
         const loop = (timestamp) => {
             const delt = timestamp - last;
-            document.getElementById("fps").innerText = `FPS:${(1000 / delt).toFixed(0)}`;
-            this.mainLoop();
-            last = timestamp;
+            if (delt > 33.333) {
+                document.getElementById("fps").innerText = `FPS:${(1000 / delt).toFixed(0)}`;
+                this.mainLoop();
+                last = timestamp;
+            }
             requestAnimationFrame(loop);
         };
         loop(0);

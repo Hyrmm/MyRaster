@@ -70,9 +70,8 @@ export class Raster {
         // 清理帧缓冲区
         this.clear()
 
-        // 刷新矩阵
+        // 重置矩阵矩阵
         this.resetMatrix()
-
 
         for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
 
@@ -83,20 +82,31 @@ export class Raster {
                 const idx = this.trianglseBuffer[i + j]
                 const vertex = new Vec3(this.vertexsBuffer[idx * 3 + 0], this.vertexsBuffer[idx * 3 + 1], this.vertexsBuffer[idx * 3 + 2])
                 const vertexScreen = this.shader.vertexShader(vertex)
-                // screenCoords.push(this.shader.vertexShader(vertex))
-                if (vertexScreen.z < -1 || vertexScreen.z > 1) continue
-                this.frameBuffer.setPixel(vertexScreen.x / vertexScreen.w, vertexScreen.y / vertexScreen.w, [255, 0, 0, 255])
+                // if (vertexScreen.z < -1 || vertexScreen.z > 1) continue
+                screenCoords.push(this.shader.vertexShader(vertex))
             }
-            // console.log(screenCoords)
             // // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
-            // this.triangle(screenCoords)
+            this.triangle(screenCoords)
 
         }
 
         this.context.putImageData(this.frameBuffer.frameData, 0, 0)
     }
 
-    public triangle(screenCoords: Array<Vec4>) {
+    public triangle(screenCoords: Array<Vec3>) {
+        const minx = Math.floor(Math.min(screenCoords[0].x, Math.min(screenCoords[1].x, screenCoords[2].x)))
+        const maxx = Math.ceil(Math.max(screenCoords[0].x, Math.max(screenCoords[1].x, screenCoords[2].x)))
+        const miny = Math.floor(Math.min(screenCoords[0].y, Math.min(screenCoords[1].y, screenCoords[2].y)))
+        const maxy = Math.ceil(Math.max(screenCoords[0].y, Math.max(screenCoords[1].y, screenCoords[2].y)))
+        for (let w = minx; w <= maxx; w++) {
+            for (let h = miny; h <= maxy; h++) {
+                const b = barycentric(screenCoords, new Vec3(w, h, 0))
+                if (b.x < 0 || b.y < 0 || b.z < 0) continue
+
+                this.frameBuffer.setPixel(w, h, [0, 255, 0, 255])
+                // console.log(1)
+            }
+        }
     }
 
     public resetMatrix() {

@@ -4,7 +4,7 @@ import { Raster } from "./raster"
 export abstract class Shader {
     protected raster: Raster
     constructor(raster: Raster) { this.raster = raster }
-    public vertexShader(vertex: Vec3): Vec4 { return new Vec4(0, 0, 0, 0) }
+    public vertexShader(vertex: Vec3): Vec3 { return new Vec3(0, 0, 0) }
     public fragmentShader(vertex1: Vec3, vertex2: Vec3, vertex3: Vec3): void { }
 }
 
@@ -12,8 +12,8 @@ export abstract class Shader {
 // 高洛德着模型
 export class GouraudShader extends Shader {
 
-    public vertexShader(vertex: Vec3): Vec4 {
-        return new Vec4(vertex.x, vertex.y, vertex.z, 1)
+    public vertexShader(vertex: Vec3): Vec3 {
+        return new Vec3(vertex.x, vertex.y, vertex.z)
     }
 
     public fragmentShader() {
@@ -24,7 +24,7 @@ export class GouraudShader extends Shader {
 
 export class FlatShader extends Shader {
 
-    public vertexShader(vertex: Vec3): Vec4 {
+    public vertexShader(vertex: Vec3): Vec3 {
         const modelMatrix = this.raster.modelMatrix
         const viewMatrix = this.raster.viewMatrix
         const projectionMatrix = this.raster.projectionMatrix
@@ -33,7 +33,7 @@ export class FlatShader extends Shader {
         const viewPortMatrix = this.raster.viewPortMatrix
         const mergedMatrix = viewPortMatrix.multiply(mvpMatrix)
 
-        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1))
+        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3()
     }
 
     public fragmentShader() {
