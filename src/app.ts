@@ -20,11 +20,9 @@ class App {
 
         const loop = (timestamp: number) => {
             const delt = timestamp - last
-            if (delt > 33.333) {
-                document.getElementById("fps")!.innerText = `FPS:${(1000 / delt).toFixed(0)}`
-                this.mainLoop()
-                last = timestamp
-            }
+            document.getElementById("fps")!.innerText = `FPS:${(1000 / delt).toFixed(0)}`
+            this.mainLoop()
+            last = timestamp
             requestAnimationFrame(loop)
         }
 
@@ -37,13 +35,12 @@ class App {
 
     public static onMouseMove(e: MouseEvent) {
         if (!this.isMouseMoving) return
-        this.raster.camera.rotatedCamera(new Matrix44().rotateY(Math.sign(e.movementX) * 2 / 180 * Math.PI))
-        // this.raster.camera.rotatedCamera(new Matrix44().rotateX(Math.sign(e.movementY) * 1 / 180 * Math.PI))
+        this.raster.camera.rotatedCamera(new Matrix44().rotateY(Math.sign(e.movementX) * 5 / 180 * Math.PI))
     }
 
     public static onKeyDown(e: KeyboardEvent) {
 
-
+        
         switch (e.code) {
             case "KeyW": {
                 this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, -10))

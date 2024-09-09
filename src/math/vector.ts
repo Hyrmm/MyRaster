@@ -18,6 +18,10 @@ export class Vec3 {
         return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
     }
 
+    static neg(v1: Vec3): Vec3 {
+        return new Vec3(-v1.x, -v1.y, -v1.z)
+    }
+
 
     public sub(v: Vec3): Vec3 {
         return new Vec3(this.x - v.x, this.y - v.y, this.z - v.z)

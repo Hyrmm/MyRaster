@@ -61,6 +61,22 @@ class FrameBuffer {
     }
 }
 
+class DepthBuffer {
+    constructor(width, height) {
+        this.data = new Map();
+    }
+    get(x, y) {
+        x = Math.floor(x);
+        y = Math.floor(y);
+        return this.data.get(`${x},${y}`) || Number.MIN_SAFE_INTEGER;
+    }
+    set(x, y, depth) {
+        x = Math.floor(x);
+        y = Math.floor(y);
+        this.data.set(`${x},${y}`, depth);
+    }
+}
+
 const fileText = `
 v -0.000581696 -0.734665 -0.623267
 v 0.000283538 -1 0.286843
@@ -6432,6 +6448,9 @@ class Vec3 {
     static dot(v1, v2) {
         return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
     }
+    static neg(v1) {
+        return new Vec3(-v1.x, -v1.y, -v1.z);
+    }
     sub(v) {
         return new Vec3(this.x - v.x, this.y - v.y, this.z - v.z);
     }
@@ -6462,12 +6481,30 @@ class Vec4 {
 }
 
 class Shader {
-    constructor(raster) { this.raster = raster; }
-    vertexShader(vertex) { return new Vec3(0, 0, 0); }
-    fragmentShader(vertex1, vertex2, vertex3) { }
+    constructor(raster) {
+        this.vertex = [];
+        this.raster = raster;
+    }
+    vertexShader(vertex, idx) { return new Vec3(0, 0, 0); }
+    fragmentShader(barycentric) { return [0, 0, 0, 0]; }
 }
-class FlatShader extends Shader {
-    vertexShader(vertex) {
+// 高洛德着色
+// 逐顶点法计算顶点的光照强度，当前像素插值计算光照强度
+class GouraudShader extends Shader {
+    constructor() {
+        super(...arguments);
+        this.lightIntensityVetex = [];
+    }
+    vertexShader(vertex, idx) {
+        if (this.vertex.length == 3) {
+            this.vertex = [];
+            this.lightIntensityVetex = [];
+        }
+        this.vertex.push(vertex);
+        const vertexNormals = this.raster.model.vertexNormals;
+        const vertexNormal = new Vec3(vertexNormals[idx], vertexNormals[idx + 1], vertexNormals[idx + 2]).normalize();
+        this.lightIntensityVetex.push(Vec3.dot(vertexNormal, Vec3.neg(this.raster.lightDir).normalize()));
+        // mvp、viewport
         const modelMatrix = this.raster.modelMatrix;
         const viewMatrix = this.raster.viewMatrix;
         const projectionMatrix = this.raster.projectionMatrix;
@@ -6476,7 +6513,9 @@ class FlatShader extends Shader {
         const mergedMatrix = viewPortMatrix.multiply(mvpMatrix);
         return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3();
     }
-    fragmentShader() {
+    fragmentShader(barycentric) {
+        const lightIntensity = this.lightIntensityVetex[0] * barycentric.x + this.lightIntensityVetex[1] * barycentric.y + this.lightIntensityVetex[2] * barycentric.z;
+        return [255 * lightIntensity, 255 * lightIntensity, 255 * lightIntensity, 255];
     }
 }
 
@@ -6730,13 +6769,14 @@ class Raster {
         this.height = h;
         this.context = context;
         this.model = new webglObjLoader_minExports.Mesh(fileText);
-        this.shader = new FlatShader(this);
+        this.shader = new GouraudShader(this);
         this.camera = new Camera(defultCameraConfig);
+        this.lightDir = new Vec3(1, -1, 0);
         this.vertexsBuffer = this.model.vertices;
         this.trianglseBuffer = this.model.indices;
         this.frameBuffer = new FrameBuffer(w, h);
+        this.depthBuffer = new DepthBuffer(w, h);
         this.resetMatrix();
-        console.log(this.model);
     }
     clear() {
         for (let byteOffset = 0; byteOffset < this.frameBuffer.frameData.data.length; byteOffset += 4) {
@@ -6746,6 +6786,7 @@ class Raster {
             this.frameBuffer.frameData.data[bIdx] = 0;
             this.frameBuffer.frameData.data[aIdx] = 255;
         }
+        this.depthBuffer = new DepthBuffer(this.width, this.height);
     }
     render() {
         // 清理帧缓冲区
@@ -6758,11 +6799,9 @@ class Raster {
             for (let j = 0; j < 3; j++) {
                 const idx = this.trianglseBuffer[i + j];
                 const vertex = new Vec3(this.vertexsBuffer[idx * 3 + 0], this.vertexsBuffer[idx * 3 + 1], this.vertexsBuffer[idx * 3 + 2]);
-                this.shader.vertexShader(vertex);
-                // if (vertexScreen.z < -1 || vertexScreen.z > 1) continue
-                screenCoords.push(this.shader.vertexShader(vertex));
+                screenCoords.push(this.shader.vertexShader(vertex, idx * 3));
             }
-            // // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
+            // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
             this.triangle(screenCoords);
         }
         this.context.putImageData(this.frameBuffer.frameData, 0, 0);
@@ -6774,11 +6813,19 @@ class Raster {
         const maxy = Math.ceil(Math.max(screenCoords[0].y, Math.max(screenCoords[1].y, screenCoords[2].y)));
         for (let w = minx; w <= maxx; w++) {
             for (let h = miny; h <= maxy; h++) {
-                const b = barycentric(screenCoords, new Vec3(w, h, 0));
-                if (b.x < 0 || b.y < 0 || b.z < 0)
+                const bar = barycentric(screenCoords, new Vec3(w, h, 0));
+                // 不在三角面内的像素点不进行着色
+                if (bar.x < 0 || bar.y < 0 || bar.z < 0)
                     continue;
-                this.frameBuffer.setPixel(w, h, [0, 255, 0, 255]);
-                // console.log(1)
+                // 计算插值后该像素的深度值,并进行深度测试
+                const depth = this.depthBuffer.get(w, h);
+                const interpolatedZ = bar.x * screenCoords[0].z + bar.y * screenCoords[1].z + bar.z * screenCoords[2].z;
+                if (interpolatedZ < -1 || interpolatedZ > 1 || interpolatedZ < depth)
+                    continue;
+                // 调用片元着色器，计算该像素的颜色
+                const color = this.shader.fragmentShader(bar);
+                this.depthBuffer.set(w, h, interpolatedZ);
+                this.frameBuffer.setPixel(w, h, color);
             }
         }
     }
@@ -6818,11 +6865,9 @@ class App {
         let last = 0;
         const loop = (timestamp) => {
             const delt = timestamp - last;
-            if (delt > 33.333) {
-                document.getElementById("fps").innerText = `FPS:${(1000 / delt).toFixed(0)}`;
-                this.mainLoop();
-                last = timestamp;
-            }
+            document.getElementById("fps").innerText = `FPS:${(1000 / delt).toFixed(0)}`;
+            this.mainLoop();
+            last = timestamp;
             requestAnimationFrame(loop);
         };
         loop(0);
@@ -6832,8 +6877,7 @@ class App {
     static onMouseMove(e) {
         if (!this.isMouseMoving)
             return;
-        this.raster.camera.rotatedCamera(new Matrix44().rotateY(Math.sign(e.movementX) * 2 / 180 * Math.PI));
-        // this.raster.camera.rotatedCamera(new Matrix44().rotateX(Math.sign(e.movementY) * 1 / 180 * Math.PI))
+        this.raster.camera.rotatedCamera(new Matrix44().rotateY(Math.sign(e.movementX) * 5 / 180 * Math.PI));
     }
     static onKeyDown(e) {
         switch (e.code) {

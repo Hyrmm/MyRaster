@@ -1,5 +1,6 @@
 import { Mesh } from "webgl-obj-loader";
 import { FrameBuffer } from "../utils/frameBuffer";
+import { DepthBuffer } from "../utils/depthBuffer";
 import african_head from "../model/african_head";
 import { Shader, GouraudShader, FlatShader } from "../core/shader";
 import { Camera, ProjectType, CameraParam } from "./camera";
@@ -14,12 +15,14 @@ export class Raster {
     private height: number
 
     private frameBuffer: FrameBuffer
+    private depthBuffer: DepthBuffer
     private vertexsBuffer: Array<number>
     private trianglseBuffer: Array<number>
 
     public model: Mesh
     public shader: Shader
     public camera: Camera
+    public lightDir: Vec3
 
     public viewMatrix: Matrix44
     public modelMatrix: Matrix44
@@ -43,15 +46,16 @@ export class Raster {
 
         this.context = context
         this.model = new Mesh(african_head)
-        this.shader = new FlatShader(this)
+        this.shader = new GouraudShader(this)
         this.camera = new Camera(defultCameraConfig)
+        this.lightDir = new Vec3(1, -1, 0)
 
         this.vertexsBuffer = this.model.vertices
         this.trianglseBuffer = this.model.indices
         this.frameBuffer = new FrameBuffer(w, h)
+        this.depthBuffer = new DepthBuffer(w, h)
 
         this.resetMatrix()
-        console.log(this.model)
     }
 
 
@@ -64,6 +68,8 @@ export class Raster {
             this.frameBuffer.frameData.data[bIdx] = 0
             this.frameBuffer.frameData.data[aIdx] = 255
         }
+
+        this.depthBuffer = new DepthBuffer(this.width, this.height)
     }
 
     public render() {
@@ -75,17 +81,17 @@ export class Raster {
 
         for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
 
+            const oriCoords = []
             const screenCoords = []
 
             // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
             for (let j = 0; j < 3; j++) {
                 const idx = this.trianglseBuffer[i + j]
                 const vertex = new Vec3(this.vertexsBuffer[idx * 3 + 0], this.vertexsBuffer[idx * 3 + 1], this.vertexsBuffer[idx * 3 + 2])
-                const vertexScreen = this.shader.vertexShader(vertex)
-                // if (vertexScreen.z < -1 || vertexScreen.z > 1) continue
-                screenCoords.push(this.shader.vertexShader(vertex))
+                oriCoords.push(vertex)
+                screenCoords.push(this.shader.vertexShader(vertex, idx * 3))
             }
-            // // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
+            // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
             this.triangle(screenCoords)
 
         }
@@ -100,11 +106,21 @@ export class Raster {
         const maxy = Math.ceil(Math.max(screenCoords[0].y, Math.max(screenCoords[1].y, screenCoords[2].y)))
         for (let w = minx; w <= maxx; w++) {
             for (let h = miny; h <= maxy; h++) {
-                const b = barycentric(screenCoords, new Vec3(w, h, 0))
-                if (b.x < 0 || b.y < 0 || b.z < 0) continue
+                const bar = barycentric(screenCoords, new Vec3(w, h, 0))
 
-                this.frameBuffer.setPixel(w, h, [0, 255, 0, 255])
-                // console.log(1)
+                // 不在三角面内的像素点不进行着色
+                if (bar.x < 0 || bar.y < 0 || bar.z < 0) continue
+
+                // 计算插值后该像素的深度值,并进行深度测试
+                const depth = this.depthBuffer.get(w, h)
+                const interpolatedZ = bar.x * screenCoords[0].z + bar.y * screenCoords[1].z + bar.z * screenCoords[2].z
+                if (interpolatedZ < -1 || interpolatedZ > 1 || interpolatedZ < depth) continue
+
+                // 调用片元着色器，计算该像素的颜色
+                const color = this.shader.fragmentShader(bar)
+
+                this.depthBuffer.set(w, h, interpolatedZ)
+                this.frameBuffer.setPixel(w, h, color)
             }
         }
     }
