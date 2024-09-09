@@ -16,6 +16,13 @@
 
 ​	本项目尽可能的不使用第三方库，唯一的模型解析除外，本项目模型文件使用的是.obj格式，所以采用了是`webgl-obj-loader`第三方库
 
+#### 2.1 启动项目
+
+- npm install 安装依赖
+- npm run dev 启动项目
+
+​    项目启动后，每当有文件变动的时都会触发`TypeScipt`编译、`Rollup`构建成单`JavaScript`脚本文件输出到`dist`目录，`dist`目录下存在一个`Html`文件，该`Html`一直引用着这个单`JavaScript`脚本文件。
+
 #### 2.1项目依赖
 
 ```json
@@ -668,3 +675,4 @@ export class GouraudShader extends Shader {
 ​	值得注意的是，这里再片元着色阶段，使用到传入的重心坐标，这个重心坐标也是上面提到再做深度测试以及判断是否在三角形内使用到。
 
 **未完待续。。。。。**
+
