@@ -2,26 +2,21 @@
 
 ​	本项目是一个基于`TypeScript`、浏览器`Canvas`，完全软光栅器实现。当然现实其实已经有很多非常出色的软光栅的项目，但难于这些项目依赖`C++`或一些图形库(`GLFW`)的支撑，学习成本较大,尤其我这样很少接触这些。如果基于浏览器`Canvas`渲染反馈，`JavaScript`实现光栅逻辑，基本上不需要配置复杂的环境。而且在调试上也有着巨大的优势，如利用浏览器的`Devtools`。
 
-​	当然本项目适用于拥有一定的图形学基础、线代基础，因为在本文后部分，基于此项目会粗略讲解重要实现的部分，所以关于图形学、线代不会提及。此项目也是我本人在入门完图形学(`Games101`)、以及拜读另一个软光栅项目 `tinyrender`有感而发，用自己擅长的技术栈也去实现一个软光栅，在后面我也会分享一下我的学习路线，以及我的参考文章。
+​	当然本项目适用于拥有一定的图形学基础、线代基础，因为在本文后部分，基于此项目会粗略详解重要实现的部分，所以关于图形学、线代不会提及。但是，此项目也是我本人在入门完图形学(`Games101`)、以及拜读另一个软光栅项目`tinyrender`有感而发，用自己擅长的技术栈也去实现一个软光栅，在后面我也会分享一下我的学习路线，以及我的参考文章。
 
-​	关于上面分别提到了`TypeScript`和 `JavaScript`，原因是本项目是基于工程化、模块化Web前端项目，所以本质上最终打包后得到还是一个 `Html`文件以及引用了一些 `JavaScript`脚本文件，具体描述参考下方关于项目描述的介绍
+​	关于上面分别提到了`TypeScript`和`JavaScript`，原因是本项目是遵循工程化、模块化标准的一个Web前端项目，所以本质上最好打包后得到还是一个`Html`文件以及引用了一些`JavaScript`脚本文件，具体描述参考下方关于项目描述的介绍
+
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-51-02.gif" style="zoom:67%;" />
 
 ### 2、项目描述
 
-​	基于`TypeScript`，`ESM`模块化标准，以及第三方库 `rollup`等周边工具构建最终JavaScript单脚本文件，使用准备模板 `Html`文件引入该脚本文件，当然静态文件 `Html`已提前包含 `Cavans`元素，因为此后渲染反馈载体都使用的是 `Cavans`元素
+​	基于`TypeScript`，`ESM`模块化标准，最后使用第三方库`rollup`等周边工具构建最终JavaScript单脚本文件，使用准备模板`Html`文件引入该脚本文件，当然静态文件`Html`已提前包含`Cavans`元素，因为此后渲染反馈载体都使用的是`Cavans`元素
 
-​	此外为了提高开发便利性，如观察反馈效果、源码调试，使用`nodemon` 做热重载刷新，且构建后 `JavaScript`带持有源码 `TypeScript`映射的 `SourceMap`文件	
+ 	此外为了提高开发便利性，如观察反馈效果、源码调试，使用`nodemon` 做热重载刷新，且构建后`JavaScript`带持有源码`TypeScript`映射的`SourceMap`文件
 
 ​	本项目尽可能的不使用第三方库，唯一的模型解析除外，本项目模型文件使用的是.obj格式，所以采用了是`webgl-obj-loader`第三方库
 
-#### 2.1启动项目
-
-- `npm install` 安装依赖
-- `npm run dev` 启动项目
-
-​	项目启动后，每当有文件变动的时都会触发`TypeScipt`编译、`Rollup`构建成单`JavaScript`脚本文件输出到`dist`目录，`dist`目录下存在一个`Html`文件，该`Html`一直引用着这个单`JavaScript`脚本文件
-
-#### 2.2项目依赖
+#### 2.1项目依赖
 
 ```json
 {
@@ -39,7 +34,7 @@
 }
 ```
 
-#### 2.3项目结构
+#### 2.2项目结构
 
 ```
 ├── dist			//工程化打包后输出的目录,用浏览器打开.html静态文件，即可看到效果
@@ -109,10 +104,6 @@ class App {
         this.raster.render()
     }
 }
-
-const canvas = document.getElementById("canvas") as HTMLCanvasElement
-App.init(canvas)
-App.start()
 ```
 
 ​	通过`requestAnimationFrame`每帧数执行我们的渲染主循环，执行完此次渲染逻辑后，随机注册下一帧的渲染逻辑，这样保证每帧渲染是连续性，且是有次序的，这也意味着若某一帧渲染耗时太久也会影响下一帧渲染时机，这也是我必须要保证的逻辑
@@ -511,9 +502,169 @@ public setPixel(x: number, y: number, rgba: [number, number, number, number]): v
 
 ##### 3.5.2 Triangle
 
-> **关于判断点是否再三角形内，有很多种方式，如向量叉乘等，本项目采用的是重心判断，感兴趣可以自行学习了解。使用重心原因为后续纹理采样，等一些着色模型应用都会使用到重心。**
+> **关于判断点是否再三角形内，有很多种方式，如向量叉乘等，本项目采用的是重心判断，感兴趣可以自行学习了解。使用重心原因为后续会用到一些插值。**
 
 ​	目前我们只是简单通过渲染顶点来观察这个模型，接下来开始着手渲染面，也就是三角形，也是光栅化比较重要部分，通过填充再三角面内的像素，达到渲染面效果，所以也就是判断像素是否再某个三角形面，有俩种实现方式
 
 - 遍历屏幕所有像素，挨个判断该像素是否再这个三角形中，性能差
 - 通过一个最小包围盒包裹住该三角形，对包围盒的像素遍历，判断是否再三角形中，性能优
+
+​	这里需要来改造一下render函数，并新增一个triangle，如下：
+
+```typescript
+public render() {
+    // 清理帧缓冲区
+    this.clear()
+    // 重置变化矩阵
+    this.resetMatrix()
+    
+    for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
+        const oriCoords = []
+        const screenCoords = []
+        // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
+        for (let j = 0; j < 3; j++) {
+            const idx = this.trianglseBuffer[i + j]
+            const vertex = new Vec3(this.vertexsBuffer[idx * 3 + 0], this.vertexsBuffer[idx * 3 + 1], this.vertexsBuffer[idx * 3 + 2])
+            screenCoords.push(this.shader.vertexShader(vertex, idx * 3))
+        }
+        // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
+        this.triangle(screenCoords)
+	}
+}
+    
+public triangle(screenCoords: Array<Vec3>) {
+    const minx = Math.floor(Math.min(screenCoords[0].x, Math.min(screenCoords[1].x, screenCoords[2].x)))
+    const maxx = Math.ceil(Math.max(screenCoords[0].x, Math.max(screenCoords[1].x, screenCoords[2].x)))
+    const miny = Math.floor(Math.min(screenCoords[0].y, Math.min(screenCoords[1].y, screenCoords[2].y)))
+    const maxy = Math.ceil(Math.max(screenCoords[0].y, Math.max(screenCoords[1].y, screenCoords[2].y)))
+    for (let w = minx; w <= maxx; w++) {
+        for (let h = miny; h <= maxy; h++) {
+            const bar = barycentric(screenCoords, new Vec3(w, h, 0))
+            // 不在三角面内的像素点不进行着色
+            if (bar.x < 0 || bar.y < 0 || bar.z < 0) continue
+            // 计算插值后该像素的深度值,并进行深度测试
+            const depth = this.depthBuffer.get(w, h)
+            const interpolatedZ = bar.x * screenCoords[0].z + bar.y * screenCoords[1].z + bar.z * screenCoords[2].z
+            if (interpolatedZ < -1 || interpolatedZ > 1 || interpolatedZ < depth) continue
+            // 调用片元着色器，计算该像素的颜色
+            const color = this.shader.fragmentShader(bar)
+            this.depthBuffer.set(w, h, interpolatedZ)
+            this.frameBuffer.setPixel(w, h, color)
+        }
+    }
+}
+```
+
+​	如上述代码，依次对每个三角形三个顶点调用vertexShader得到屏幕到像素点坐标，随后交给triangle处理，这里采用的是包围盒算法，去一个最小的包围盒包裹该三角形，遍历这些可能存在于三角形内的像素点，以此做是否再三角形内、深度测试，最后将通过测试的像素交给`fragmentShader`获取该像素最终的颜色。
+
+​	值得注意的是深度测试放到此处，原因此时开始渲染面，丢弃应该是像素点，而不是之前粗暴的顶点。到这里我们开始处理`fragmentShader`的逻辑了。
+
+##### 3.5.3 FragmentShader
+
+​	片元着色器输入当前像素信息，输出该像素的颜色值。但常常输入是该像素的在三角形内的重心坐标，方便后续应用着色模型运用插值。为了快速看到我们加入面处理后的效果，这里我们FragmentShader只是简单通过输入的像素，输出一个固定的白色,如下效果：
+
+```typescript
+// src/core/shader.ts
+public fragmentShader(barycentric: Vec3): [number, number, number, number] {
+    return [255, 255, 255, 255]
+}
+```
+
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-10-15.gif" style="zoom:67%;" />
+
+#### 3.6 着色模型/着色频率
+
+​	很明显上述效果并不是我们想要，也是在意料之中。首先我们对每个所有三角面内的所有颜色都采用一种颜色，所以导致的这样结果。首先，模型本身所有三角面角度是不一致(法向量各不相同)，也就是模型表面应该是凹凸不平的，现实生活中某个方向有一道平行光，模型每个地方接受的光是不相等，所以模型表面反射光的强弱是不一致的，也导致作为观察者，看去模型各个地方颜色也是不一致的。
+
+​	以上便是着色模型的思想，物体表面的颜色受关照和材质影响，所以本文考虑最简单光照，平行光，首先我们定一个平行光，如对着模型正方向的平行光,也就是往-z轴照去的光：
+
+```typescript
+// src/core/raster.ts
+this.lightDir = new Vec3(0, 0, -1)
+```
+
+##### 3.6.1 FlatShading	
+
+有了平行光，此刻只要计算出光照强度，也就是平行光和面(像素、点)的法向量夹角。至于是以像素为计算夹角还是整个计算夹角，这便是着色频率的思想，如我计算一个三角面的光照强度，在这平面内所有像素都采用该光照强盗影响下的颜色，以此类推，以像素，以顶点，这也是常规的三种着色频率`flat`、`gouraud`、`phone`,这三种分别对应着逐面 、逐顶点、逐像素，为了方便观察效果的变化，我们采用最简单的`flat`着色频率，如下代码实现和效果：
+
+```typescript
+// src/core/shader.ts
+export class FlatShader extends Shader {
+
+    private normal: Vec3 = new Vec3(0, 0, 0)
+    private lightIntensity: number = 0
+
+    public vertexShader(vertex: Vec3): Vec3 {
+        if (this.vertex.length == 3) this.vertex = []
+
+        this.vertex.push(vertex)
+        if (this.vertex.length == 3) {
+            this.normal = this.vertex[1].sub(this.vertex[0]).cross(this.vertex[2].sub(this.vertex[0])).normalize()
+            this.lightIntensity = Vec3.dot(Vec3.neg(this.raster.lightDir).normalize(), this.normal)
+        }
+
+        // mvp、viewport
+        const modelMatrix = this.raster.modelMatrix
+        const viewMatrix = this.raster.viewMatrix
+        const projectionMatrix = this.raster.projectionMatrix
+        const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
+        const viewPortMatrix = this.raster.viewPortMatrix
+        const mergedMatrix = viewPortMatrix.multiply(mvpMatrix)
+
+        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3()
+    }
+
+    public fragmentShader(barycentric: Vec3): [number, number, number, number] {
+        return [255 * this.lightIntensity, 255 * this.lightIntensity, 255 * this.lightIntensity, 255]
+    }
+}
+```
+
+​	在顶点着色阶段便计算当前三角面的法向量，随后便计算出该面的光照强度并记录，在偏远着色阶段时，直接对面内所有像素采用同光照强度下的颜色值。
+
+​	值得注意的是，这里将光照方向取反了，原因我们定义的光照是一个向量，表示一个方向，所以在计算夹角时，应取反。
+
+​	![](https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-39-30.gif)
+
+​	观察上面效果可能会有疑问，为什么旋转时脸部一直都是最亮的状态，原因是我们旋转的是相机，光照方向和模型的位置都没有发生变化，所以脸部一直都是最亮的状态。
+
+##### 3.6.2 GouraudShading
+
+​	该着色频率便是逐顶点的，通过三角面三个顶点的法向量计算出对应的光照强度，随后对内部所有像素插值得出该像素的光照强度，直接上代码：
+
+```typescript
+export class GouraudShader extends Shader {
+
+    private lightIntensityVetex: Array<number> = []
+    public vertexShader(vertex: Vec3, idx: number): Vec3 {
+
+        if (this.vertex.length == 3) {
+            this.vertex = []
+            this.lightIntensityVetex = []
+        }
+        this.vertex.push(vertex)
+        const vertexNormals = this.raster.model.vertexNormals
+        const vertexNormal = new Vec3(vertexNormals[idx], vertexNormals[idx + 1], vertexNormals[idx + 2]).normalize()
+        this.lightIntensityVetex.push(Vec3.dot(vertexNormal, Vec3.neg(this.raster.lightDir).normalize()))
+
+        // mvp、viewport
+        const modelMatrix = this.raster.modelMatrix
+        const viewMatrix = this.raster.viewMatrix
+        const projectionMatrix = this.raster.projectionMatrix
+        const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
+        const viewPortMatrix = this.raster.viewPortMatrix
+        const mergedMatrix = viewPortMatrix.multiply(mvpMatrix)
+
+        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3()
+    }
+
+    public fragmentShader(barycentric: Vec3): [number, number, number, number] {
+        const lightIntensity = this.lightIntensityVetex[0] * barycentric.x + this.lightIntensityVetex[1] * barycentric.y + this.lightIntensityVetex[2] * barycentric.z
+        return [255 * lightIntensity, 255 * lightIntensity, 255 * lightIntensity, 255]
+    }
+}
+```
+
+​	值得注意的是，这里再片元着色阶段，使用到传入的重心坐标，这个重心坐标也是上面提到再做深度测试以及判断是否在三角形内使用到。
+
+**未完待续。。。。。**

@@ -6771,7 +6771,7 @@ class Raster {
         this.model = new webglObjLoader_minExports.Mesh(fileText);
         this.shader = new GouraudShader(this);
         this.camera = new Camera(defultCameraConfig);
-        this.lightDir = new Vec3(1, -1, 0);
+        this.lightDir = new Vec3(2, -1.5, 0);
         this.vertexsBuffer = this.model.vertices;
         this.trianglseBuffer = this.model.indices;
         this.frameBuffer = new FrameBuffer(w, h);

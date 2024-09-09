@@ -48,7 +48,7 @@ export class Raster {
         this.model = new Mesh(african_head)
         this.shader = new GouraudShader(this)
         this.camera = new Camera(defultCameraConfig)
-        this.lightDir = new Vec3(1, -1, 0)
+        this.lightDir = new Vec3(2, -1.5, 0)
 
         this.vertexsBuffer = this.model.vertices
         this.trianglseBuffer = this.model.indices
@@ -80,15 +80,11 @@ export class Raster {
         this.resetMatrix()
 
         for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
-
-            const oriCoords = []
             const screenCoords = []
-
             // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
             for (let j = 0; j < 3; j++) {
                 const idx = this.trianglseBuffer[i + j]
                 const vertex = new Vec3(this.vertexsBuffer[idx * 3 + 0], this.vertexsBuffer[idx * 3 + 1], this.vertexsBuffer[idx * 3 + 2])
-                oriCoords.push(vertex)
                 screenCoords.push(this.shader.vertexShader(vertex, idx * 3))
             }
             // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
