@@ -6,13 +6,18 @@
 
 ​	关于上面分别提到了`TypeScript`和`JavaScript`，原因是本项目是遵循工程化、模块化标准的一个Web前端项目，所以本质上最好打包后得到还是一个`Html`文件以及引用了一些`JavaScript`脚本文件，具体描述参考下方关于项目描述的介绍
 
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-51-02.gif" style="zoom:67%;" />
+<div style="display:flex;justify-content:center;">
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-39-30.gif" style="zoom:25%;" />
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-51-02.gif" style="zoom:25%;" />
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-18-01.gif" style="zoom:25%;" />
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-55-53.gif" style="zoom:25%;" />
+</div>
 
 ### 2、项目描述
 
 ​	基于`TypeScript`，`ESM`模块化标准，最后使用第三方库`rollup`等周边工具构建最终JavaScript单脚本文件，使用准备模板`Html`文件引入该脚本文件，当然静态文件`Html`已提前包含`Cavans`元素，因为此后渲染反馈载体都使用的是`Cavans`元素
 
- 	此外为了提高开发便利性，如观察反馈效果、源码调试，使用`nodemon` 做热重载刷新，且构建后`JavaScript`带持有源码`TypeScript`映射的`SourceMap`文件
+​	此外为了提高开发便利性，如观察反馈效果、源码调试，使用`nodemon` +`live-server`做热重载刷新，且构建后`JavaScript`带持有源码`TypeScript`映射的`SourceMap`文件
 
 ​	本项目尽可能的不使用第三方库，唯一的模型解析除外，本项目模型文件使用的是.obj格式，所以采用了是`webgl-obj-loader`第三方库
 
@@ -21,7 +26,7 @@
 - npm install 安装依赖
 - npm run dev 启动项目
 
-​    项目启动后，每当有文件变动的时都会触发`TypeScipt`编译、`Rollup`构建成单`JavaScript`脚本文件输出到`dist`目录，`dist`目录下存在一个`Html`文件，该`Html`一直引用着这个单`JavaScript`脚本文件。
+​    项目启动后，每当有文件变动的时都会触发`TypeScipt`编译、`Rollup`构建成单`JavaScript`脚本文件输出到`dist`目录，随后打开或刷新浏览器。`dist`目录下存放的项目生成的静态文件以及一些需要加载的纹理资源
 
 #### 2.1项目依赖
 
@@ -34,6 +39,8 @@
     "@rollup/plugin-commonjs": "^26.0.1",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
+	"concurrently": "^9.0.0",
+    "live-server": "^1.2.2",
     "nodemon": "^3.1.4",
     "rollup": "^4.21.0",
     "typescript": "^5.5.4"
@@ -631,7 +638,7 @@ export class FlatShader extends Shader {
 
 ​	值得注意的是，这里将光照方向取反了，原因我们定义的光照是一个向量，表示一个方向，所以在计算夹角时，应取反。
 
-​	![](https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-39-30.gif)
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-39-30.gif" style="zoom:67%;">
 
 ​	观察上面效果可能会有疑问，为什么旋转时脸部一直都是最亮的状态，原因是我们旋转的是相机，光照方向和模型的位置都没有发生变化，所以脸部一直都是最亮的状态。
 
@@ -674,5 +681,149 @@ export class GouraudShader extends Shader {
 
 ​	值得注意的是，这里再片元着色阶段，使用到传入的重心坐标，这个重心坐标也是上面提到再做深度测试以及判断是否在三角形内使用到。
 
-**未完待续。。。。。**
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-51-02.gif" style="zoom:67%;" />
 
+##### 3.6.3 PhoneShading
+
+​	该着色频率便是逐像素，根据每个像素自身的法向量来计算光照强度，随后对该像素应用对于光照强度的下的颜色值。关于每个像素的法向量并不是能直接得到的，这里需要一张法线贴图或切线贴图，这贴图也是一种纹理，纹理颜色值记录的表示的是法向量，所以在一个三角面内，通过三个顶点的uv坐标插值计算出对应像素的uv坐标，在从法线贴图中获取该像素的法向量，从而得到光照强度，计算该像素的最终颜色。
+
+​	这个涉及到了关于纹理的采样，这块的实现在下一小节就会提及，所以这里我们先不关心纹理采样的逻辑，只去实现这样的着色频率逻辑，上代码：
+
+```typescript
+export class PhoneShader extends Shader {
+
+    private textureVetex: Array<Vec3> = []
+    public vertexShader(vertex: Vec3, idx: number): Vec3 {
+
+        if (this.vertex.length == 3) {
+            this.vertex = []
+            this.textureVetex = []
+        }
+        this.vertex.push(vertex)
+        const vertexTextures = this.raster.model.textures
+        this.textureVetex.push(new Vec3(vertexTextures[idx], vertexTextures[idx + 1], 0))
+
+        // mvp、viewport
+        const modelMatrix = this.raster.modelMatrix
+        const viewMatrix = this.raster.viewMatrix
+        const projectionMatrix = this.raster.projectionMatrix
+        const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
+        const viewPortMatrix = this.raster.viewPortMatrix
+        const mergedMatrix = viewPortMatrix.multiply(mvpMatrix)
+
+        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3()
+    }
+
+    public fragmentShader(barycentric: Vec3): [number, number, number, number] {
+        const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z
+        const v = this.textureVetex[0].y * barycentric.x + this.textureVetex[1].y * barycentric.y + this.textureVetex[2].y * barycentric.z
+        const normalColor = this.raster.textureNormal.sampling(u, v)
+
+        let lightIntensity = 1
+        if (normalColor) {
+            const normal = new Vec3(normalColor[0] * 2 / 255 - 1, normalColor[1] * 2 / 255 - 1, normalColor[2] * 2 / 255 - 1).normalize()
+            lightIntensity = Vec3.dot(Vec3.neg(this.raster.lightDir).normalize(), normal)
+        }
+        if (normalColor) return [255 * lightIntensity, 255 * lightIntensity, 255 * lightIntensity, 255]
+        return [255, 255, 255, 255]
+    }
+}
+
+```
+
+​	如上述代码在顶点着色阶段，记录每个顶点的uv坐标，随后在偏远阶段插值计算当前像素的uv坐标，随后通过`this.raster.textureNormal.sampling(u, v)`从法线贴图中获取一个记录法向量的颜色值，中间需要对颜色值转换成法向量，这是一个固定计算方式，取决于法线贴图的生成。
+
+​	这里对`normalColor`进行判断原因在于因为纹理作为图片是异步加载的，可能存在贴图还未加载完成。看下实际效果，明显相比前俩中着色频率，细节更加丰富：
+
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-18-01.gif" style="zoom:67%;" />
+
+
+
+#### 3.7 纹理采样
+
+> **本项目为了方便加载，所有贴图都放在项目./dist目录下**
+
+​	在上一节中介绍了三种着色频率，基于一种平行光，根据不同光照强度采用不同亮度的颜色。所以对于平行光的背面，以为光照强度为0，意味着没有任何颜色，这完全是不符合现实的。模型有着自身的颜色，也就是贴图，光照只会影响面的亮度。贴图通过`uv坐标`记录着模型中所有用到的颜色值。
+
+##### 3.7.1 实现
+
+​	因本项目基于web浏览器，所以加载都是通过`Http`请求加载图片，所以生成纹理是异步的过程。对加载好的图片，使用`canvas`对其解码展开，得到对应的纹理格式数据(位图)。具体看如下代码：
+
+```typescript
+// scr/core/texture.ts
+export class Texture {
+    private image: HTMLImageElement
+    private loaded: boolean = false
+    private textureData: ImageData
+    constructor(src: string) {
+        this.image = new Image()
+        this.image.src = src
+        this.image.onload = () => {
+
+            const canvas = document.createElement('canvas')
+            canvas.width = this.image.width
+            canvas.height = this.image.height
+
+            const context = canvas.getContext('2d')
+            context.drawImage(this.image, 0, 0)
+
+            this.textureData = context.getImageData(0, 0, canvas.width, canvas.height)
+            this.loaded = true
+        }
+    }
+
+    public sampling(u: number, v: number): [number, number, number, number] | null {
+        if (!this.loaded) return null
+        const x = Math.floor(u * (this.image.width - 1))
+        const y = Math.floor((1 - v) * (this.image.height - 1))
+        return this.getPixel(x, y)
+    }
+
+    public getPixel(x: number, y: number): [number, number, number, number] {
+        const result: [number, number, number, number] = [0, 0, 0, 0]
+
+        result[0] = this.textureData.data[((y * this.image.width + x) * 4) + 0]
+        result[1] = this.textureData.data[((y * this.image.width + x) * 4) + 1]
+        result[2] = this.textureData.data[((y * this.image.width + x) * 4) + 2]
+        result[3] = this.textureData.data[((y * this.image.width + x) * 4) + 3]
+
+        return result
+    }
+
+}
+```
+
+```typescript
+// scr/core/raster.ts
+this.textureNormal = new Texture("african_head_nm.png")
+this.textureDiffuse = new Texture("african_head_diffuse.png")
+```
+
+​	值得注意的是，因为使用canvas对图片进行的解码，因为的`canvas`解码的特性，原点在左上角，而我们的uv坐标的原点在左下角，所以对`v坐标`进行一个反转。
+
+##### 3.7.2 应用贴图
+
+​	有了对于纹理贴图，在片元阶段，通过三个顶点的uv插值计算像素的uv坐标，从贴图纹理中采样其颜色值。
+
+```typescript
+public fragmentShader(barycentric: Vec3): [number, number, number, number] {
+    const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z
+    const v = this.textureVetex[0].y * barycentric.x + this.textureVetex[1].y * barycentric.y + this.textureVetex[2].y * barycentric.z
+    const corlor = this.raster.textureDiffuse.sampling(u, v)
+    const normalColor = this.raster.textureNormal.sampling(u, v)
+    let lightIntensity = 1
+    if (normalColor && corlor) {
+        const normal = new Vec3(normalColor[0] * 2 / 255 - 1, normalColor[1] * 2 / 255 - 1, normalColor[2] * 2 / 255 - 1).normalize()
+        lightIntensity = Vec3.dot(Vec3.neg(this.raster.lightDir).normalize(), normal)
+        return [corlor[0] * lightIntensity, corlor[1] * lightIntensity, corlor[2] * lightIntensity, corlor[3]]
+    } else {
+        return [255, 255, 255, 255]
+    }
+}
+```
+
+​	只要对前面用到的`PhoneShading`的`fragmentShader`中，参与光照强度计算的默认白色替换成我们从贴图获取的的颜色即可，这里对`normalColor`和`corlor`同时判断，原因和前面提交一样，纹理异步加载的，可能还未完成加载。看下效果：
+
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-55-53.gif" style="zoom:67%;" />
+
+未完待续。。。

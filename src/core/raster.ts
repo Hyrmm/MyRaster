@@ -59,7 +59,7 @@ export class Raster {
         this.frameBuffer = new FrameBuffer(w, h)
         this.depthBuffer = new DepthBuffer(w, h)
 
-        this.textureNormal = new Texture("african_head_nm_tangent.png")
+        this.textureNormal = new Texture("african_head_nm.png")
         this.textureDiffuse = new Texture("african_head_diffuse.png")
 
         this.resetMatrix()

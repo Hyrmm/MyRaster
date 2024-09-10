@@ -6515,15 +6515,17 @@ class PhoneShader extends Shader {
     fragmentShader(barycentric) {
         const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z;
         const v = this.textureVetex[0].y * barycentric.x + this.textureVetex[1].y * barycentric.y + this.textureVetex[2].y * barycentric.z;
+        const corlor = this.raster.textureDiffuse.sampling(u, v);
         const normalColor = this.raster.textureNormal.sampling(u, v);
         let lightIntensity = 1;
-        if (normalColor) {
+        if (normalColor && corlor) {
             const normal = new Vec3(normalColor[0] * 2 / 255 - 1, normalColor[1] * 2 / 255 - 1, normalColor[2] * 2 / 255 - 1).normalize();
             lightIntensity = Vec3.dot(Vec3.neg(this.raster.lightDir).normalize(), normal);
+            return [corlor[0] * lightIntensity, corlor[1] * lightIntensity, corlor[2] * lightIntensity, corlor[3]];
         }
-        if (normalColor)
-            return [255 * lightIntensity, 255 * lightIntensity, 255 * lightIntensity, 255];
-        return [255, 255, 255, 255];
+        else {
+            return [255, 255, 255, 255];
+        }
     }
 }
 
@@ -6816,7 +6818,7 @@ class Raster {
         this.trianglseBuffer = this.model.indices;
         this.frameBuffer = new FrameBuffer(w, h);
         this.depthBuffer = new DepthBuffer(w, h);
-        this.textureNormal = new Texture("african_head_nm_tangent.png");
+        this.textureNormal = new Texture("african_head_nm.png");
         this.textureDiffuse = new Texture("african_head_diffuse.png");
         this.resetMatrix();
     }
