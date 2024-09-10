@@ -6488,22 +6488,21 @@ class Shader {
     vertexShader(vertex, idx) { return new Vec3(0, 0, 0); }
     fragmentShader(barycentric) { return [0, 0, 0, 0]; }
 }
-// 高洛德着色
-// 逐顶点法计算顶点的光照强度，当前像素插值计算光照强度
-class GouraudShader extends Shader {
+// 冯氏着色
+// 逐像素获取法向量，用道法线贴图
+class PhoneShader extends Shader {
     constructor() {
         super(...arguments);
-        this.lightIntensityVetex = [];
+        this.textureVetex = [];
     }
     vertexShader(vertex, idx) {
         if (this.vertex.length == 3) {
             this.vertex = [];
-            this.lightIntensityVetex = [];
+            this.textureVetex = [];
         }
         this.vertex.push(vertex);
-        const vertexNormals = this.raster.model.vertexNormals;
-        const vertexNormal = new Vec3(vertexNormals[idx], vertexNormals[idx + 1], vertexNormals[idx + 2]).normalize();
-        this.lightIntensityVetex.push(Vec3.dot(vertexNormal, Vec3.neg(this.raster.lightDir).normalize()));
+        const vertexTextures = this.raster.model.textures;
+        this.textureVetex.push(new Vec3(vertexTextures[idx], vertexTextures[idx + 1], 0));
         // mvp、viewport
         const modelMatrix = this.raster.modelMatrix;
         const viewMatrix = this.raster.viewMatrix;
@@ -6514,8 +6513,17 @@ class GouraudShader extends Shader {
         return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3();
     }
     fragmentShader(barycentric) {
-        const lightIntensity = this.lightIntensityVetex[0] * barycentric.x + this.lightIntensityVetex[1] * barycentric.y + this.lightIntensityVetex[2] * barycentric.z;
-        return [255 * lightIntensity, 255 * lightIntensity, 255 * lightIntensity, 255];
+        const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z;
+        const v = this.textureVetex[0].y * barycentric.x + this.textureVetex[1].y * barycentric.y + this.textureVetex[2].y * barycentric.z;
+        const normalColor = this.raster.textureNormal.sampling(u, v);
+        let lightIntensity = 1;
+        if (normalColor) {
+            const normal = new Vec3(normalColor[0] * 2 / 255 - 1, normalColor[1] * 2 / 255 - 1, normalColor[2] * 2 / 255 - 1).normalize();
+            lightIntensity = Vec3.dot(Vec3.neg(this.raster.lightDir).normalize(), normal);
+        }
+        if (normalColor)
+            return [255 * lightIntensity, 255 * lightIntensity, 255 * lightIntensity, 255];
+        return [255, 255, 255, 255];
     }
 }
 
@@ -6756,6 +6764,38 @@ const barycentric = (triangles, p) => {
     return new Vec3(lambda1, lambda2, lambda3);
 };
 
+class Texture {
+    constructor(src) {
+        this.loaded = false;
+        this.image = new Image();
+        this.image.src = src;
+        this.image.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = this.image.width;
+            canvas.height = this.image.height;
+            const context = canvas.getContext('2d');
+            context.drawImage(this.image, 0, 0);
+            this.textureData = context.getImageData(0, 0, canvas.width, canvas.height);
+            this.loaded = true;
+        };
+    }
+    sampling(u, v) {
+        if (!this.loaded)
+            return null;
+        const x = Math.floor(u * (this.image.width - 1));
+        const y = Math.floor((1 - v) * (this.image.height - 1));
+        return this.getPixel(x, y);
+    }
+    getPixel(x, y) {
+        const result = [0, 0, 0, 0];
+        result[0] = this.textureData.data[((y * this.image.width + x) * 4) + 0];
+        result[1] = this.textureData.data[((y * this.image.width + x) * 4) + 1];
+        result[2] = this.textureData.data[((y * this.image.width + x) * 4) + 2];
+        result[3] = this.textureData.data[((y * this.image.width + x) * 4) + 3];
+        return result;
+    }
+}
+
 class Raster {
     constructor(w, h, context) {
         const defultCameraConfig = {
@@ -6768,14 +6808,16 @@ class Raster {
         this.width = w;
         this.height = h;
         this.context = context;
-        this.model = new webglObjLoader_minExports.Mesh(fileText);
-        this.shader = new GouraudShader(this);
+        this.model = new webglObjLoader_minExports.Mesh(fileText, { enableWTextureCoord: true });
+        this.shader = new PhoneShader(this);
         this.camera = new Camera(defultCameraConfig);
         this.lightDir = new Vec3(2, -1.5, 0);
         this.vertexsBuffer = this.model.vertices;
         this.trianglseBuffer = this.model.indices;
         this.frameBuffer = new FrameBuffer(w, h);
         this.depthBuffer = new DepthBuffer(w, h);
+        this.textureNormal = new Texture("african_head_nm_tangent.png");
+        this.textureDiffuse = new Texture("african_head_diffuse.png");
         this.resetMatrix();
     }
     clear() {

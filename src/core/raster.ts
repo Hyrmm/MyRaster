@@ -2,11 +2,12 @@ import { Mesh } from "webgl-obj-loader";
 import { FrameBuffer } from "../utils/frameBuffer";
 import { DepthBuffer } from "../utils/depthBuffer";
 import african_head from "../model/african_head";
-import { Shader, GouraudShader, FlatShader } from "../core/shader";
+import { Shader, GouraudShader, FlatShader, PhoneShader } from "../core/shader";
 import { Camera, ProjectType, CameraParam } from "./camera";
 import { Vec3, Vec4 } from "../math/vector";
 import { barycentric } from "../math/math"
 import { Matrix44 } from "../math/matrix"
+import { Texture } from "../core/texture"
 
 
 export class Raster {
@@ -29,6 +30,9 @@ export class Raster {
     public viewPortMatrix: Matrix44
     public projectionMatrix: Matrix44
 
+    public textureNormal: Texture
+    public textureDiffuse: Texture
+
     private context: CanvasRenderingContext2D
 
     constructor(w: number, h: number, context: CanvasRenderingContext2D) {
@@ -45,8 +49,8 @@ export class Raster {
         this.height = h
 
         this.context = context
-        this.model = new Mesh(african_head)
-        this.shader = new GouraudShader(this)
+        this.model = new Mesh(african_head, { enableWTextureCoord: true })
+        this.shader = new PhoneShader(this)
         this.camera = new Camera(defultCameraConfig)
         this.lightDir = new Vec3(2, -1.5, 0)
 
@@ -54,6 +58,9 @@ export class Raster {
         this.trianglseBuffer = this.model.indices
         this.frameBuffer = new FrameBuffer(w, h)
         this.depthBuffer = new DepthBuffer(w, h)
+
+        this.textureNormal = new Texture("african_head_nm_tangent.png")
+        this.textureDiffuse = new Texture("african_head_diffuse.png")
 
         this.resetMatrix()
     }

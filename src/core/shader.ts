@@ -9,6 +9,46 @@ export abstract class Shader {
     public fragmentShader(barycentric: Vec3): [number, number, number, number] { return [0, 0, 0, 0] }
 }
 
+// 冯氏着色
+// 逐像素获取法向量，用道法线贴图
+export class PhoneShader extends Shader {
+
+    private textureVetex: Array<Vec3> = []
+    public vertexShader(vertex: Vec3, idx: number): Vec3 {
+
+        if (this.vertex.length == 3) {
+            this.vertex = []
+            this.textureVetex = []
+        }
+        this.vertex.push(vertex)
+        const vertexTextures = this.raster.model.textures
+        this.textureVetex.push(new Vec3(vertexTextures[idx], vertexTextures[idx + 1], 0))
+
+        // mvp、viewport
+        const modelMatrix = this.raster.modelMatrix
+        const viewMatrix = this.raster.viewMatrix
+        const projectionMatrix = this.raster.projectionMatrix
+        const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
+        const viewPortMatrix = this.raster.viewPortMatrix
+        const mergedMatrix = viewPortMatrix.multiply(mvpMatrix)
+
+        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3()
+    }
+
+    public fragmentShader(barycentric: Vec3): [number, number, number, number] {
+        const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z
+        const v = this.textureVetex[0].y * barycentric.x + this.textureVetex[1].y * barycentric.y + this.textureVetex[2].y * barycentric.z
+        const normalColor = this.raster.textureNormal.sampling(u, v)
+
+        let lightIntensity = 1
+        if (normalColor) {
+            const normal = new Vec3(normalColor[0] * 2 / 255 - 1, normalColor[1] * 2 / 255 - 1, normalColor[2] * 2 / 255 - 1).normalize()
+            lightIntensity = Vec3.dot(Vec3.neg(this.raster.lightDir).normalize(), normal)
+        }
+        if (normalColor) return [255 * lightIntensity, 255 * lightIntensity, 255 * lightIntensity, 255]
+        return [255, 255, 255, 255]
+    }
+}
 
 // 高洛德着色
 // 逐顶点法计算顶点的光照强度，当前像素插值计算光照强度
@@ -43,7 +83,8 @@ export class GouraudShader extends Shader {
     }
 }
 
-// 逐三角形着色,根据三角形顶点，得三角面法向量，计算光照强度
+// 平面着色
+// 逐三角形着色,根据三角形顶点，顶点叉乘计算三角面法向量，计算光照强度
 export class FlatShader extends Shader {
 
     private normal: Vec3 = new Vec3(0, 0, 0)
