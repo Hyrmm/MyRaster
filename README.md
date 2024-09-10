@@ -6,12 +6,7 @@
 
 ​	关于上面分别提到了`TypeScript`和`JavaScript`，原因是本项目是遵循工程化、模块化标准的一个Web前端项目，所以本质上最好打包后得到还是一个`Html`文件以及引用了一些`JavaScript`脚本文件，具体描述参考下方关于项目描述的介绍
 
-<div style="display:flex;justify-content:center;">
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-39-30.gif" style="zoom:25%;" />
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-51-02.gif" style="zoom:25%;" />
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-18-01.gif" style="zoom:25%;" />
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-55-53.gif" style="zoom:25%;" />
-</div>
+![](https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/23-31-10.gif)
 
 ### 2、项目描述
 
@@ -826,4 +821,4 @@ public fragmentShader(barycentric: Vec3): [number, number, number, number] {
 
 <img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-55-53.gif" style="zoom:67%;" />
 
-未完待续。。。
+**未完待续。。。**
