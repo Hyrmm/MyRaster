@@ -6448,11 +6448,20 @@ class Vec3 {
     static dot(v1, v2) {
         return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
     }
+    static mul(v1, v2) {
+        return new Vec3(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z);
+    }
     static neg(v1) {
         return new Vec3(-v1.x, -v1.y, -v1.z);
     }
+    static plus(v1, v2) {
+        return new Vec3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
+    }
     sub(v) {
         return new Vec3(this.x - v.x, this.y - v.y, this.z - v.z);
+    }
+    scale(s) {
+        return new Vec3(this.x * s, this.y * s, this.z * s);
     }
     cross(v) {
         const x = this.y * v.z - this.z * v.y;
@@ -6463,6 +6472,9 @@ class Vec3 {
     normalize() {
         const length = this.length;
         return new Vec3(this.x / length, this.y / length, this.z / length);
+    }
+    toVec4(w = 1) {
+        return new Vec4(this.x, this.y, this.z, w);
     }
     get length() {
         return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
@@ -6494,10 +6506,12 @@ class PhoneShader extends Shader {
     constructor() {
         super(...arguments);
         this.textureVetex = [];
+        this.viewSpaceVertex = [];
     }
     vertexShader(vertex, idx) {
         if (this.vertex.length == 3) {
             this.vertex = [];
+            this.viewSpaceVertex = [];
             this.textureVetex = [];
         }
         this.vertex.push(vertex);
@@ -6510,22 +6524,31 @@ class PhoneShader extends Shader {
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix));
         const viewPortMatrix = this.raster.viewPortMatrix;
         const mergedMatrix = viewPortMatrix.multiply(mvpMatrix);
+        this.viewSpaceVertex.push(viewMatrix.multiply(modelMatrix).multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3());
         return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3();
     }
     fragmentShader(barycentric) {
         const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z;
         const v = this.textureVetex[0].y * barycentric.x + this.textureVetex[1].y * barycentric.y + this.textureVetex[2].y * barycentric.z;
+        const x = this.viewSpaceVertex[0].x * barycentric.x + this.viewSpaceVertex[1].x * barycentric.y + this.viewSpaceVertex[2].x;
+        const y = this.viewSpaceVertex[0].y * barycentric.x + this.viewSpaceVertex[1].y * barycentric.y + this.viewSpaceVertex[2].y;
+        const z = this.viewSpaceVertex[0].z * barycentric.x + this.viewSpaceVertex[1].z * barycentric.y + this.viewSpaceVertex[2].z;
         const corlor = this.raster.textureDiffuse.sampling(u, v);
-        const normalColor = this.raster.textureNormal.sampling(u, v);
-        let lightIntensity = 1;
-        if (normalColor && corlor) {
-            const normal = new Vec3(normalColor[0] * 2 / 255 - 1, normalColor[1] * 2 / 255 - 1, normalColor[2] * 2 / 255 - 1).normalize();
-            lightIntensity = Vec3.dot(Vec3.neg(this.raster.lightDir).normalize(), normal);
-            return [corlor[0] * lightIntensity, corlor[1] * lightIntensity, corlor[2] * lightIntensity, corlor[3]];
-        }
-        else {
+        const normals = this.raster.textureNormal.sampling(u, v);
+        if (!corlor || !normals)
             return [255, 255, 255, 255];
-        }
+        const light = Vec3.neg(this.raster.lightDir).normalize();
+        const normal = new Vec3(normals[0] * 2 / 255 - 1, normals[1] * 2 / 255 - 1, normals[2] * 2 / 255 - 1).normalize();
+        // 环境光
+        const ambient = .5;
+        // 漫反射
+        const diffuse = Math.max(Vec3.dot(normal, light), 0);
+        // 镜面反射
+        const reflect = normal.scale(2 * Vec3.dot(normal, light)).sub(light);
+        const viewVec = new Vec3(0, 0, 0).sub(new Vec3(x, y, z)).normalize();
+        const specular = Math.pow(Math.max(Vec3.dot(reflect, viewVec), 0), 256);
+        const intensity = ambient + diffuse + specular;
+        return [corlor[0] * intensity, corlor[1] * intensity, corlor[2] * intensity, corlor[3]];
     }
 }
 
@@ -6804,7 +6827,7 @@ class Raster {
             fovY: 45, aspect: w / h,
             near: -0, far: -400,
             projectType: ProjectType.Orthogonal,
-            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 1), lookAt: new Vec3(0, 0, 0),
+            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 1), lookAt: new Vec3(0, 0, -1),
             sceenHeight: h, sceenWidth: w
         };
         this.width = w;
@@ -6813,7 +6836,7 @@ class Raster {
         this.model = new webglObjLoader_minExports.Mesh(fileText, { enableWTextureCoord: true });
         this.shader = new PhoneShader(this);
         this.camera = new Camera(defultCameraConfig);
-        this.lightDir = new Vec3(2, -1.5, 0);
+        this.lightDir = new Vec3(5, 0, 0);
         this.vertexsBuffer = this.model.vertices;
         this.trianglseBuffer = this.model.indices;
         this.frameBuffer = new FrameBuffer(w, h);

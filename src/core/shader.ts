@@ -12,12 +12,13 @@ export abstract class Shader {
 // 冯氏着色
 // 逐像素获取法向量，用道法线贴图
 export class PhoneShader extends Shader {
-
     private textureVetex: Array<Vec3> = []
+    private viewSpaceVertex: Array<Vec3> = []
     public vertexShader(vertex: Vec3, idx: number): Vec3 {
 
         if (this.vertex.length == 3) {
             this.vertex = []
+            this.viewSpaceVertex = []
             this.textureVetex = []
         }
         this.vertex.push(vertex)
@@ -31,25 +32,45 @@ export class PhoneShader extends Shader {
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
         const viewPortMatrix = this.raster.viewPortMatrix
         const mergedMatrix = viewPortMatrix.multiply(mvpMatrix)
+        this.viewSpaceVertex.push(viewMatrix.multiply(modelMatrix).multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3())
+
 
         return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3()
     }
 
     public fragmentShader(barycentric: Vec3): [number, number, number, number] {
+
+
         const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z
         const v = this.textureVetex[0].y * barycentric.x + this.textureVetex[1].y * barycentric.y + this.textureVetex[2].y * barycentric.z
+        const x = this.viewSpaceVertex[0].x * barycentric.x + this.viewSpaceVertex[1].x * barycentric.y + this.viewSpaceVertex[2].x
+        const y = this.viewSpaceVertex[0].y * barycentric.x + this.viewSpaceVertex[1].y * barycentric.y + this.viewSpaceVertex[2].y
+        const z = this.viewSpaceVertex[0].z * barycentric.x + this.viewSpaceVertex[1].z * barycentric.y + this.viewSpaceVertex[2].z
 
         const corlor = this.raster.textureDiffuse.sampling(u, v)
-        const normalColor = this.raster.textureNormal.sampling(u, v)
+        const normals = this.raster.textureNormal.sampling(u, v)
 
-        let lightIntensity = 1
-        if (normalColor && corlor) {
-            const normal = new Vec3(normalColor[0] * 2 / 255 - 1, normalColor[1] * 2 / 255 - 1, normalColor[2] * 2 / 255 - 1).normalize()
-            lightIntensity = Vec3.dot(Vec3.neg(this.raster.lightDir).normalize(), normal)
-            return [corlor[0] * lightIntensity, corlor[1] * lightIntensity, corlor[2] * lightIntensity, corlor[3]]
-        } else {
-            return [255, 255, 255, 255]
-        }
+        if (!corlor || !normals) return [255, 255, 255, 255]
+
+        const light = Vec3.neg(this.raster.lightDir).normalize()
+        const normal = new Vec3(normals[0] * 2 / 255 - 1, normals[1] * 2 / 255 - 1, normals[2] * 2 / 255 - 1).normalize()
+
+
+
+
+        // 环境光
+        const ambient = .5
+
+        // 漫反射
+        const diffuse = Math.max(Vec3.dot(normal, light), 0)
+
+        // 镜面反射
+        const reflect = normal.scale(2 * Vec3.dot(normal, light)).sub(light)
+        const viewVec = new Vec3(0, 0, 0).sub(new Vec3(x, y, z)).normalize()
+        const specular = Math.pow(Math.max(Vec3.dot(reflect, viewVec), 0), 256)
+
+        const intensity = ambient + diffuse + specular
+        return [corlor[0] * intensity, corlor[1] * intensity, corlor[2] * intensity, corlor[3]]
     }
 }
 

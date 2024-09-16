@@ -41,7 +41,7 @@ export class Raster {
             fovY: 45, aspect: w / h,
             near: -0, far: -400,
             projectType: ProjectType.Orthogonal,
-            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 1), lookAt: new Vec3(0, 0, 0),
+            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 1), lookAt: new Vec3(0, 0, -1),
             sceenHeight: h, sceenWidth: w
         }
 
@@ -52,7 +52,7 @@ export class Raster {
         this.model = new Mesh(african_head, { enableWTextureCoord: true })
         this.shader = new PhoneShader(this)
         this.camera = new Camera(defultCameraConfig)
-        this.lightDir = new Vec3(2, -1.5, 0)
+        this.lightDir = new Vec3(5, 0, 0)
 
         this.vertexsBuffer = this.model.vertices
         this.trianglseBuffer = this.model.indices

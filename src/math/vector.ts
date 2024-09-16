@@ -18,13 +18,24 @@ export class Vec3 {
         return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
     }
 
+    static mul(v1: Vec3, v2: Vec3): Vec3 {
+        return new Vec3(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z)
+    }
+
     static neg(v1: Vec3): Vec3 {
         return new Vec3(-v1.x, -v1.y, -v1.z)
     }
 
+    static plus(v1: Vec3, v2: Vec3): Vec3 {
+        return new Vec3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z)
+    }
 
     public sub(v: Vec3): Vec3 {
         return new Vec3(this.x - v.x, this.y - v.y, this.z - v.z)
+    }
+
+    public scale(s: number): Vec3 {
+        return new Vec3(this.x * s, this.y * s, this.z * s)
     }
 
     public cross(v: Vec3): Vec3 {
@@ -38,6 +49,12 @@ export class Vec3 {
         const length = this.length
         return new Vec3(this.x / length, this.y / length, this.z / length)
     }
+
+    public toVec4(w: number = 1): Vec4 {
+        return new Vec4(this.x, this.y, this.z, w)
+    }
+
+
 
     public get length(): number {
         return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);

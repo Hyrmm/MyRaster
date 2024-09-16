@@ -5,6 +5,7 @@
 ​	当然本项目适用于拥有一定的图形学基础、线代基础，因为在本文后部分，基于此项目会粗略讲解重要实现的部分，所以关于图形学、线代不会提及。但是，此项目也是我本人在入门完图形学(`Games101`)、以及拜读另一个软光栅项目`tinyrender`有感而发，用自己擅长的技术栈也去实现一个软光栅，在后面我也会分享一下我的学习路线，以及我的参考文章。
 
 ​	关于上面分别提到了`TypeScript`和`JavaScript`，原因是本项目是遵循工程化、模块化标准的一个Web前端项目，所以本质上最好打包后得到还是一个`Html`文件以及引用了一些`JavaScript`脚本文件，具体描述参考下方关于项目描述的介绍
+![23-33-41](https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/23-33-41.gif)
 
 ![](https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/23-31-10.gif)
 
@@ -179,7 +180,7 @@ export class Raster {
 
 如上，Raster每帧在用黑色填充当前帧数据，然后将当前帧数据提交，因为目前在此中间比没有其他操作，所以目前我们看到`Cavans`一直处于黑色，且页面左上方会事实显示我们当前渲染的帧数
 
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/16-38-13.gif" style="zoom: 67%;" />
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/16-38-13.gif" style="zoom: 33%;" />
 
 #### 3.3 导入模型
 
@@ -437,7 +438,7 @@ export class Raster {
 }
 ```
 
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/16-33-41.gif" style="zoom:67%;" />
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/16-33-41.gif" style="zoom: 33%;" />
 
 ​		最终看到的效果便如上图，为了验证矩阵的正确性，这边监听鼠标拖动来动态调整相机的角度，如下代码：
 
@@ -468,7 +469,7 @@ export class Camera {
 
 ​	上述代码通过监听鼠标的按住拖动，生成一个绕Y轴旋转的旋转矩阵，并让更新相机一个`rotationMatExc`矩阵，此处`rotationMatExc`矩阵在上文`3.4.2`中提及过，以及它的设计目的。我们来长按拖动鼠标看到如下效果：
 
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/21-10-01.gif" style="zoom:67%;" />
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/21-10-01.gif" style="zoom: 33%;" />
 
 ​	上述效果有个明显问题，我们旋转的是相机，当我们相机朝一个角度旋转时，当旋转到180度时，此时模型应该已经在我们相机背面，应该什么都看不到。
 
@@ -493,7 +494,7 @@ export class Raster {
 }
 ```
 
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/21-27-11.gif" style="zoom:67%;" />
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/21-27-11.gif" style="zoom: 33%;" />
 
 ​	当然x y坐标不在-1,1范围内理论上也是不需要渲染，也需要裁剪掉，此项目这里不处理的原因是，在做视口变化后，x，y都转换成屏幕坐标，当设置像素时，超过屏幕高度和宽度的像素都是不生成的，`frameBuffer`的`setPixel`方法
 
@@ -579,7 +580,7 @@ public fragmentShader(barycentric: Vec3): [number, number, number, number] {
 }
 ```
 
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-10-15.gif" style="zoom:67%;" />
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-10-15.gif" style="zoom: 33%;" />
 
 #### 3.6 着色模型/着色频率
 
@@ -633,7 +634,7 @@ export class FlatShader extends Shader {
 
 ​	值得注意的是，这里将光照方向取反了，原因我们定义的光照是一个向量，表示一个方向，所以在计算夹角时，应取反。
 
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-39-30.gif" style="zoom:67%;">
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-39-30.gif" style="zoom: 33%;">
 
 ​	观察上面效果可能会有疑问，为什么旋转时脸部一直都是最亮的状态，原因是我们旋转的是相机，光照方向和模型的位置都没有发生变化，所以脸部一直都是最亮的状态。
 
@@ -676,7 +677,7 @@ export class GouraudShader extends Shader {
 
 ​	值得注意的是，这里再片元着色阶段，使用到传入的重心坐标，这个重心坐标也是上面提到再做深度测试以及判断是否在三角形内使用到。
 
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-51-02.gif" style="zoom:67%;" />
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-51-02.gif" style="zoom: 33%;" />
 
 ##### 3.6.3 PhoneShading
 
@@ -730,7 +731,7 @@ export class PhoneShader extends Shader {
 
 ​	这里对`normalColor`进行判断原因在于因为纹理作为图片是异步加载的，可能存在贴图还未加载完成。看下实际效果，明显相比前俩中着色频率，细节更加丰富：
 
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-18-01.gif" style="zoom:67%;" />
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-18-01.gif" style="zoom: 33%;" />
 
 
 
@@ -819,6 +820,138 @@ public fragmentShader(barycentric: Vec3): [number, number, number, number] {
 
 ​	只要对前面用到的`PhoneShading`的`fragmentShader`中，参与光照强度计算的默认白色替换成我们从贴图获取的的颜色即可，这里对`normalColor`和`corlor`同时判断，原因和前面提交一样，纹理异步加载的，可能还未完成加载。看下效果：
 
-<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-55-53.gif" style="zoom:67%;" />
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-55-53.gif" style="zoom: 33%;" />
 
 **未完待续。。。**
+
+#### 3.8 光照
+
+> 光照强度在实际计算时，为遵从物理定律，需要考虑点面距离光光源的距离，距离远近所能接受的光的能量是不同，下面的光照不考虑距离，感兴趣可以自行深入补充
+
+​	书接上文，从不同着色频率的角度对模型进行着色，在着色模型上只是简单采用了一种简单平行光，但是对于一个成熟的着色模型来说，只考虑一种所谓平行光是不完整的，所以本节开始介绍一个完整的着色模型所需要计算的关照，本项目着色模型实现基于`phone光照模型`，当然还有一个`Blinn-Phong光照模型`，俩者区别在于高光上计算有优化。	
+
+​	首先需要明确的一件事，之所以物体能被我们观察，是因为人眼接收到了从物体来的光，这些来自物体的光有很多类型，具体类型依据所使用的光照模型。基于`phone光照模型`，该模型定义三种光，环境光、漫反射光、高光。
+
+##### 3.8.1 环境光
+
+​	在现实环境中，周围光的折射射是复杂的，如物体背光的一面也是可能接受一定来自结果多次折射的光，并反射出去。这就是所谓的环境光，在`phone光照模型`中，只会去考虑环境光的影响，并且不会去精确的描述，而只是用一个简单的式子表示
+
+![img](https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/v2-70373fb16b9559996126c48dd0671ed1_720w.webp)
+
+其中`Ka`代表物体表面对环境光的反射率，`Ia`代表入射环境光的亮度，`Ienv`存储结果，即人眼所能看到从物体表面反射的环境光的亮度。
+
+```typescript
+export class PhoneShader extends Shader {
+    public fragmentShader(barycentric: Vec3): [number, number, number, number] {
+
+
+        const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z
+        const v = this.textureVetex[0].y * barycentric.x + this.textureVetex[1].y * barycentric.y + this.textureVetex[2].y * barycentric.z
+
+        const corlor = this.raster.textureDiffuse.sampling(u, v)
+        const normals = this.raster.textureNormal.sampling(u, v)
+
+        if (!corlor || !normals) return [255, 255, 255, 255]
+
+        // 环境光
+        //const ambient = 1
+        const ambient = 0.5
+        const intensity = ambient
+        return [corlor[0] * intensity, corlor[1] * intensity, corlor[2] * intensity, corlor[3]]
+    }
+}
+```
+
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-08-21.gif" alt="22-08-21" style="zoom: 33%;" />
+
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-08-42.gif" alt="22-08-42" style="zoom:33%;" />
+
+> ​	上述俩个示意效果便是俩种不同Ienv下的结果
+
+##### 3.8.2 漫反射
+
+​	漫反射便是光从一定角度入射之后从入射点向四面八方反射，且每个不同方向反射的光的强度相等。决定反射光强度由光的入射方向和点面的法向量的夹角。这里的光的入射方向取决于不同类型的光源，如下：
+
+- 平行光:光照入射角度是固定的
+- 点光源:点面到光源点所形成的向量
+- 聚光灯:有范围的平行光
+
+​	此项目光源使用最简单的光平行光，光的入射的角度的是固定。因为涉及到点面法向量计算，所以此处法向量的计算依赖当前使用的着色频率。此处我们在逐像素频率着色实现漫反射，且平行光方向为(5,0,0)：
+
+```typescript
+export class PhoneShader extends Shader {
+    public fragmentShader(barycentric: Vec3): [number, number, number, number] {
+
+
+        const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z
+        const v = this.textureVetex[0].y * barycentric.x + this.textureVetex[1].y * barycentric.y + this.textureVetex[2].y * barycentric.z
+
+        const corlor = this.raster.textureDiffuse.sampling(u, v)
+        const normals = this.raster.textureNormal.sampling(u, v)
+
+        if (!corlor || !normals) return [255, 255, 255, 255]
+
+        // 环境光
+        const ambient = 0.5
+
+		// 漫反射
+		const light = Vec3.neg(this.raster.lightDir).normalize()
+        const diffuse = Math.max(Vec3.dot(normal, light), 0)
+        const intensity = ambient + diffuse
+        return [corlor[0] * intensity, corlor[1] * intensity, corlor[2] * intensity, corlor[3]]
+    }
+}
+```
+
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/22-38-33.gif" alt="22-38-33" style="zoom:33%;" />
+
+​	上述效果便是叠加的`环境光`和`漫反射光`所展示出来的，平行光方向朝X的正半轴，所以左侧脸部亮度明显比右侧更亮，因为环境光的存在，即使位于右侧脸部也有着一定的着色亮度。
+
+##### 3.8.3 高光(镜面反射)
+
+​	该光故名思意，物体会反射光，当发射光刚好到达观察方向，此时会出现高光部分，如现实生活中的镜子。所以高光的出现取决于观察方向，和反射光方向。也就是反射方向和观察方向的夹角：
+
+```typescript
+        const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z
+        const v = this.textureVetex[0].y * barycentric.x + this.textureVetex[1].y * barycentric.y + this.textureVetex[2].y * barycentric.z
+        const x = this.viewSpaceVertex[0].x * barycentric.x + this.viewSpaceVertex[1].x * barycentric.y + this.viewSpaceVertex[2].x
+        const y = this.viewSpaceVertex[0].y * barycentric.x + this.viewSpaceVertex[1].y * barycentric.y + this.viewSpaceVertex[2].y
+        const z = this.viewSpaceVertex[0].z * barycentric.x + this.viewSpaceVertex[1].z * barycentric.y + this.viewSpaceVertex[2].z
+
+        const corlor = this.raster.textureDiffuse.sampling(u, v)
+        const normals = this.raster.textureNormal.sampling(u, v)
+
+        if (!corlor || !normals) return [255, 255, 255, 255]
+
+        const light = Vec3.neg(this.raster.lightDir).normalize()
+        const normal = new Vec3(normals[0] * 2 / 255 - 1, normals[1] * 2 / 255 - 1, normals[2] * 2 / 255 - 1).normalize()
+
+        // 环境光
+        const ambient = .5
+
+        // 漫反射
+        const diffuse = Math.max(Vec3.dot(normal, light), 0)
+
+        // 镜面反射
+        const reflect = normal.scale(2 * Vec3.dot(normal, light)).sub(light)
+        const viewVec = new Vec3(0, 0, 0).sub(new Vec3(x, y, z)).normalize()
+        const specular = Math.pow(Math.max(Vec3.dot(reflect, viewVec), 0), 32)
+
+        const intensity = ambient + diffuse + specular
+        return [corlor[0] * intensity, corlor[1] * intensity, corlor[2] * intensity, corlor[3]]
+    }
+}
+```
+
+​	此处的反射光的方向是一个固定公式，参考`phone光照模型`，入射光采用的是平行光，固定的入射角度。重点是观察方向，观察方向是该点面到观察(相机)位置所形成的向量，注意此处通过插值计算当前该像素的世界坐标，继而将世界坐标转换成视图空间下的坐标，因为在视图空间下，相机位置便就是原点。最后通过一个p系数次方来控制高光的范围，这个值通常也会从一种高光贴图中采取。
+
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/23-15-49.gif" alt="23-15-49" style="zoom:33%;" />
+
+<img src="https://grab-1301500159.cos.ap-shanghai.myqcloud.com/markDown/23-16-15.gif" alt="23-16-15" style="zoom:33%;" />
+
+​	上述俩种不同结果，就是通过调整系数P，来控制高光的范围大小，值得注意的是，当我们旋转相机时，高光的位置也在发生变化，即使我们相机的位置没有发生变化，但是通过旋转物体相对相机的位置是在变化，也就是转换到视图空间下，物体坐标发生了变化，又因为高光中观察方向是由物体的点面到观察方向所形成的向量，这也是为什么上述提及计算观察方向时，将插值得到的世界坐标转换到视图空间下的坐标。
+
+
+
+- ***上次更新:24.9.16***
+- ***未完待续***

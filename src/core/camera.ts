@@ -33,9 +33,9 @@ export class Camera {
     private screenWidth: number
     private screenHeight: number
 
-    private up: Vec3
-    private pos: Vec3
-    private lookAt: Vec3
+    public up: Vec3
+    public pos: Vec3
+    public lookAt: Vec3
 
     private transMatExc: Matrix44
     private rotationMatExc: Matrix44
