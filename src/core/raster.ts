@@ -94,12 +94,36 @@ export class Raster {
                 const vertex = new Vec3(this.vertexsBuffer[idx * 3 + 0], this.vertexsBuffer[idx * 3 + 1], this.vertexsBuffer[idx * 3 + 2])
                 screenCoords.push(this.shader.vertexShader(vertex, idx * 3))
             }
-            // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，并对包含像素上色，片元着色阶段
-            this.triangle(screenCoords)
+            // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，图元装配光栅化
+            // this.triangle(screenCoords)
+            // this.line(screenCoords[0], screenCoords[1])
+            // this.line(screenCoords[1], screenCoords[2])
+            // this.line(screenCoords[2], screenCoords[0])
 
         }
 
         this.context.putImageData(this.frameBuffer.frameData, 0, 0)
+    }
+
+    public line(start: Vec3, end: Vec3) {
+        const dx = end.x - start.x
+        const dy = end.y - start.y
+        const k = dy / dx
+
+        if (Math.abs(dx) >= Math.abs(dy)) {
+            const b = start.y - k * start.x
+            for (let x = start.x; x <= end.x; x++) {
+                const y = Math.round(k * x + b)
+                this.frameBuffer.setPixel(x, y, [255, 255, 255, 255])
+            }
+        } else {
+            const kInverse = 1 / k
+            const b = start.x - kInverse * start.y
+            for (let y = start.y; y <= end.y; y++) {
+                const x = Math.round(kInverse * y + b)
+                this.frameBuffer.setPixel(x, y, [255, 255, 255, 255])
+            }
+        }
     }
 
     public triangle(screenCoords: Array<Vec3>) {
