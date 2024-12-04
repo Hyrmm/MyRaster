@@ -75,6 +75,10 @@ export class Vec4 {
         this.w = w
     }
 
+    public div(v: number): Vec4 {
+        return new Vec4(this.x / v, this.y / v, this.z / v, this.w / v)
+    }
+
     public toVec3(): Vec3 {
         return new Vec3(this.x, this.y, this.z)
     }

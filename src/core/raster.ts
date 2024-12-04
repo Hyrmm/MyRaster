@@ -38,10 +38,10 @@ export class Raster {
     constructor(w: number, h: number, context: CanvasRenderingContext2D) {
 
         const defultCameraConfig: CameraParam = {
-            fovY: 45, aspect: w / h,
-            near: -0, far: -400,
-            projectType: ProjectType.Orthogonal,
-            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 1), lookAt: new Vec3(0, 0, -1),
+            fovY: 60, aspect: w / h,
+            near: 0.1, far: 5000,
+            projectType: ProjectType.Perspective,
+            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 800), lookAt: new Vec3(0, 0, -1),
             sceenHeight: h, sceenWidth: w
         }
 
@@ -52,7 +52,7 @@ export class Raster {
         this.model = new Mesh(african_head, { enableWTextureCoord: true })
         this.shader = new PhoneShader(this)
         this.camera = new Camera(defultCameraConfig)
-        this.lightDir = new Vec3(5, 0, 0)
+        this.lightDir = new Vec3(0, 0, -1)
 
         this.vertexsBuffer = this.model.vertices
         this.trianglseBuffer = this.model.indices
@@ -95,7 +95,7 @@ export class Raster {
                 screenCoords.push(this.shader.vertexShader(vertex, idx * 3))
             }
             // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，图元装配光栅化
-            // this.triangle(screenCoords)
+            this.triangle(screenCoords)
             // this.line(screenCoords[0], screenCoords[1])
             // this.line(screenCoords[1], screenCoords[2])
             // this.line(screenCoords[2], screenCoords[0])

@@ -25,17 +25,27 @@ export class PhoneShader extends Shader {
         const vertexTextures = this.raster.model.textures
         this.textureVetex.push(new Vec3(vertexTextures[idx], vertexTextures[idx + 1], 0))
 
-        // mvp、viewport
+        let result = new Vec4(vertex.x, vertex.y, vertex.z, 1)
+        
+        // mvp
         const modelMatrix = this.raster.modelMatrix
         const viewMatrix = this.raster.viewMatrix
         const projectionMatrix = this.raster.projectionMatrix
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
+
+        result = mvpMatrix.multiplyVec(result)
+        result = result.div(result.w)
+
+        // viewport
         const viewPortMatrix = this.raster.viewPortMatrix
-        const mergedMatrix = viewPortMatrix.multiply(mvpMatrix)
-        this.viewSpaceVertex.push(viewMatrix.multiply(modelMatrix).multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3())
+        result = viewPortMatrix.multiplyVec(result)
 
+        this.viewSpaceVertex.push(mvpMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3())
 
-        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3()
+        result = mvpMatrix.multiplyVec(result)
+        result = result.div(result.w)
+
+        return result.toVec3()
     }
 
     public fragmentShader(barycentric: Vec3): [number, number, number, number] {
@@ -90,15 +100,22 @@ export class GouraudShader extends Shader {
         const vertexNormal = new Vec3(vertexNormals[idx], vertexNormals[idx + 1], vertexNormals[idx + 2]).normalize()
         this.lightIntensityVetex.push(Vec3.dot(vertexNormal, Vec3.neg(this.raster.lightDir).normalize()))
 
-        // mvp、viewport
+        let result = new Vec4(vertex.x, vertex.y, vertex.z, 1)
+
+        // mvp
         const modelMatrix = this.raster.modelMatrix
         const viewMatrix = this.raster.viewMatrix
         const projectionMatrix = this.raster.projectionMatrix
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
-        const viewPortMatrix = this.raster.viewPortMatrix
-        const mergedMatrix = viewPortMatrix.multiply(mvpMatrix)
 
-        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3()
+        result = mvpMatrix.multiplyVec(result)
+        result = result.div(result.w)
+
+        // viewport
+        const viewPortMatrix = this.raster.viewPortMatrix
+        result = viewPortMatrix.multiplyVec(result)
+
+        return result.toVec3()
     }
 
     public fragmentShader(barycentric: Vec3): [number, number, number, number] {
@@ -123,15 +140,22 @@ export class FlatShader extends Shader {
             this.lightIntensity = Vec3.dot(Vec3.neg(this.raster.lightDir).normalize(), this.normal)
         }
 
-        // mvp、viewport
+        let result = new Vec4(vertex.x, vertex.y, vertex.z, 1)
+
+        // mvp
         const modelMatrix = this.raster.modelMatrix
         const viewMatrix = this.raster.viewMatrix
         const projectionMatrix = this.raster.projectionMatrix
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
-        const viewPortMatrix = this.raster.viewPortMatrix
-        const mergedMatrix = viewPortMatrix.multiply(mvpMatrix)
 
-        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3()
+        result = mvpMatrix.multiplyVec(result)
+        result = result.div(result.w)
+
+        // viewport
+        const viewPortMatrix = this.raster.viewPortMatrix
+        result = viewPortMatrix.multiplyVec(result)
+
+        return result.toVec3()
     }
 
     public fragmentShader(barycentric: Vec3): [number, number, number, number] {

@@ -6487,6 +6487,9 @@ class Vec4 {
         this.z = z;
         this.w = w;
     }
+    div(v) {
+        return new Vec4(this.x / v, this.y / v, this.z / v, this.w / v);
+    }
     toVec3() {
         return new Vec3(this.x, this.y, this.z);
     }
@@ -6517,15 +6520,21 @@ class PhoneShader extends Shader {
         this.vertex.push(vertex);
         const vertexTextures = this.raster.model.textures;
         this.textureVetex.push(new Vec3(vertexTextures[idx], vertexTextures[idx + 1], 0));
-        // mvp、viewport
+        let result = new Vec4(vertex.x, vertex.y, vertex.z, 1);
+        // mvp
         const modelMatrix = this.raster.modelMatrix;
         const viewMatrix = this.raster.viewMatrix;
         const projectionMatrix = this.raster.projectionMatrix;
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix));
+        result = mvpMatrix.multiplyVec(result);
+        result = result.div(result.w);
+        // viewport
         const viewPortMatrix = this.raster.viewPortMatrix;
-        const mergedMatrix = viewPortMatrix.multiply(mvpMatrix);
-        this.viewSpaceVertex.push(viewMatrix.multiply(modelMatrix).multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3());
-        return mergedMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3();
+        result = viewPortMatrix.multiplyVec(result);
+        this.viewSpaceVertex.push(mvpMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3());
+        result = mvpMatrix.multiplyVec(result);
+        result = result.div(result.w);
+        return result.toVec3();
     }
     fragmentShader(barycentric) {
         const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z;
@@ -6751,11 +6760,13 @@ class Camera {
         return scaleMat.multiply(transMat);
     }
     perspective() {
+        const top = this.near * Math.tan(this.fovY / 2 * Math.PI / 360);
+        const right = top * this.aspect;
         return new Matrix44([
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
+            [this.near / right, 0, 0, 0],
+            [0, this.near / top, 0, 0],
+            [0, 0, (this.far + this.near) / (this.far - this.near), (2 * this.near * this.far) / (this.far - this.near)],
+            [0, 0, -1, 0]
         ]);
     }
     getViewMat() {
@@ -6767,7 +6778,7 @@ class Camera {
             return this.orthogonal();
         }
         else {
-            return this.orthogonal().multiply(this.perspective());
+            return this.perspective();
         }
     }
     rotatedCamera(mat) {
@@ -6824,10 +6835,10 @@ class Texture {
 class Raster {
     constructor(w, h, context) {
         const defultCameraConfig = {
-            fovY: 45, aspect: w / h,
-            near: -0, far: -400,
-            projectType: ProjectType.Orthogonal,
-            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 1), lookAt: new Vec3(0, 0, -1),
+            fovY: 60, aspect: w / h,
+            near: 0.1, far: 5000,
+            projectType: ProjectType.Perspective,
+            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 800), lookAt: new Vec3(0, 0, -1),
             sceenHeight: h, sceenWidth: w
         };
         this.width = w;
@@ -6836,7 +6847,7 @@ class Raster {
         this.model = new webglObjLoader_minExports.Mesh(fileText, { enableWTextureCoord: true });
         this.shader = new PhoneShader(this);
         this.camera = new Camera(defultCameraConfig);
-        this.lightDir = new Vec3(5, 0, 0);
+        this.lightDir = new Vec3(0, 0, -1);
         this.vertexsBuffer = this.model.vertices;
         this.trianglseBuffer = this.model.indices;
         this.frameBuffer = new FrameBuffer(w, h);
@@ -6869,7 +6880,7 @@ class Raster {
                 screenCoords.push(this.shader.vertexShader(vertex, idx * 3));
             }
             // 绘制三角形:通过三个顶点计算包含在三角形内的屏幕像素，图元装配光栅化
-            // this.triangle(screenCoords)
+            this.triangle(screenCoords);
             // this.line(screenCoords[0], screenCoords[1])
             // this.line(screenCoords[1], screenCoords[2])
             // this.line(screenCoords[2], screenCoords[0])

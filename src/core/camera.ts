@@ -144,11 +144,17 @@ export class Camera {
     }
 
     public perspective(): Matrix44 {
+        const top = this.near * Math.tan(this.fovY / 2 * Math.PI / 360)
+        const bottom = -top
+
+        const right = top * this.aspect
+        const left = -right
+
         return new Matrix44([
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
+            [this.near / right, 0, 0, 0],
+            [0, this.near / top, 0, 0],
+            [0, 0, (this.far + this.near) / (this.far - this.near), (2 * this.near * this.far) / (this.far - this.near)],
+            [0, 0, -1, 0]
         ])
     }
 
@@ -161,7 +167,7 @@ export class Camera {
         if (this.projectType == ProjectType.Orthogonal) {
             return this.orthogonal()
         } else {
-            return this.orthogonal().multiply(this.perspective())
+            return this.perspective()
         }
     }
 
