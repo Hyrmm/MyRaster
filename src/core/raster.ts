@@ -52,7 +52,7 @@ export class Raster {
         this.model = new Mesh(african_head, { enableWTextureCoord: true })
         this.shader = new PhoneShader(this)
         this.camera = new Camera(defultCameraConfig)
-        this.lightDir = new Vec3(0, 0, -1)
+        this.lightDir = new Vec3(1, 0, 0)
 
         this.vertexsBuffer = this.model.vertices
         this.trianglseBuffer = this.model.indices
@@ -87,7 +87,7 @@ export class Raster {
         this.resetMatrix()
 
         for (let i = 0; i < this.trianglseBuffer.length; i += 3) {
-            const screenCoords = []
+            const screenCoords: Vec4[] = []
             // 顶点计算: 对每个顶点进行矩阵运算(MVP)，输出顶点的屏幕坐标，顶点着色阶段
             for (let j = 0; j < 3; j++) {
                 const idx = this.trianglseBuffer[i + j]
@@ -126,7 +126,7 @@ export class Raster {
         }
     }
 
-    public triangle(screenCoords: Array<Vec3>) {
+    public triangle(screenCoords: Array<Vec4>) {
         const minx = Math.floor(Math.min(screenCoords[0].x, Math.min(screenCoords[1].x, screenCoords[2].x)))
         const maxx = Math.ceil(Math.max(screenCoords[0].x, Math.max(screenCoords[1].x, screenCoords[2].x)))
         const miny = Math.floor(Math.min(screenCoords[0].y, Math.min(screenCoords[1].y, screenCoords[2].y)))

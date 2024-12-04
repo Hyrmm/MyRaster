@@ -1,6 +1,6 @@
-import { Vec3 } from "./vector";
+import { Vec3, Vec4 } from "./vector";
 
-export const barycentric = (triangles: Vec3[], p: Vec3): Vec3 => {
+export const barycentric = (triangles: Vec4[], p: Vec3): Vec3 => {
     const a = triangles[0]
     const b = triangles[1]
     const c = triangles[2]

@@ -5,7 +5,7 @@ export abstract class Shader {
     protected vertex: Array<Vec3> = []
     protected raster: Raster
     constructor(raster: Raster) { this.raster = raster }
-    public vertexShader(vertex: Vec3, idx: number): Vec3 { return new Vec3(0, 0, 0) }
+    public vertexShader(vertex: Vec3, idx: number): Vec4 { return new Vec4(0, 0, 0, 0) }
     public fragmentShader(barycentric: Vec3): [number, number, number, number] { return [0, 0, 0, 0] }
 }
 
@@ -13,8 +13,8 @@ export abstract class Shader {
 // 逐像素获取法向量，用道法线贴图
 export class PhoneShader extends Shader {
     private textureVetex: Array<Vec3> = []
-    private viewSpaceVertex: Array<Vec3> = []
-    public vertexShader(vertex: Vec3, idx: number): Vec3 {
+    private viewSpaceVertex: Array<Vec4> = []
+    public vertexShader(vertex: Vec3, idx: number): Vec4 {
 
         if (this.vertex.length == 3) {
             this.vertex = []
@@ -26,26 +26,28 @@ export class PhoneShader extends Shader {
         this.textureVetex.push(new Vec3(vertexTextures[idx], vertexTextures[idx + 1], 0))
 
         let result = new Vec4(vertex.x, vertex.y, vertex.z, 1)
-        
-        // mvp
+
+        // mvp变化
         const modelMatrix = this.raster.modelMatrix
         const viewMatrix = this.raster.viewMatrix
         const projectionMatrix = this.raster.projectionMatrix
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
-
         result = mvpMatrix.multiplyVec(result)
+        this.viewSpaceVertex.push(result)
+
+        // 源深度值
+        const oriDepth = result.w
+
+        // 透视除法
         result = result.div(result.w)
 
-        // viewport
+        // 视口变化
         const viewPortMatrix = this.raster.viewPortMatrix
         result = viewPortMatrix.multiplyVec(result)
 
-        this.viewSpaceVertex.push(mvpMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3())
+        result.w = oriDepth
 
-        result = mvpMatrix.multiplyVec(result)
-        result = result.div(result.w)
-
-        return result.toVec3()
+        return result
     }
 
     public fragmentShader(barycentric: Vec3): [number, number, number, number] {
@@ -65,11 +67,8 @@ export class PhoneShader extends Shader {
         const light = Vec3.neg(this.raster.lightDir).normalize()
         const normal = new Vec3(normals[0] * 2 / 255 - 1, normals[1] * 2 / 255 - 1, normals[2] * 2 / 255 - 1).normalize()
 
-
-
-
         // 环境光
-        const ambient = .5
+        const ambient = .4
 
         // 漫反射
         const diffuse = Math.max(Vec3.dot(normal, light), 0)
@@ -89,7 +88,7 @@ export class PhoneShader extends Shader {
 export class GouraudShader extends Shader {
 
     private lightIntensityVetex: Array<number> = []
-    public vertexShader(vertex: Vec3, idx: number): Vec3 {
+    public vertexShader(vertex: Vec3, idx: number): Vec4 {
 
         if (this.vertex.length == 3) {
             this.vertex = []
@@ -102,20 +101,26 @@ export class GouraudShader extends Shader {
 
         let result = new Vec4(vertex.x, vertex.y, vertex.z, 1)
 
-        // mvp
+        // mvp变化
         const modelMatrix = this.raster.modelMatrix
         const viewMatrix = this.raster.viewMatrix
         const projectionMatrix = this.raster.projectionMatrix
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
-
         result = mvpMatrix.multiplyVec(result)
+
+        // 源深度值
+        const oriDepth = result.w
+
+        // 透视除法
         result = result.div(result.w)
 
-        // viewport
+        // 视口变化
         const viewPortMatrix = this.raster.viewPortMatrix
         result = viewPortMatrix.multiplyVec(result)
 
-        return result.toVec3()
+        result.w = oriDepth
+
+        return result
     }
 
     public fragmentShader(barycentric: Vec3): [number, number, number, number] {
@@ -131,7 +136,7 @@ export class FlatShader extends Shader {
     private normal: Vec3 = new Vec3(0, 0, 0)
     private lightIntensity: number = 0
 
-    public vertexShader(vertex: Vec3): Vec3 {
+    public vertexShader(vertex: Vec3): Vec4 {
         if (this.vertex.length == 3) this.vertex = []
 
         this.vertex.push(vertex)
@@ -142,20 +147,26 @@ export class FlatShader extends Shader {
 
         let result = new Vec4(vertex.x, vertex.y, vertex.z, 1)
 
-        // mvp
+        // mvp变化
         const modelMatrix = this.raster.modelMatrix
         const viewMatrix = this.raster.viewMatrix
         const projectionMatrix = this.raster.projectionMatrix
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
-
         result = mvpMatrix.multiplyVec(result)
+
+        // 源深度值
+        const oriDepth = result.w
+
+        // 透视除法
         result = result.div(result.w)
 
-        // viewport
+        // 视口变化
         const viewPortMatrix = this.raster.viewPortMatrix
         result = viewPortMatrix.multiplyVec(result)
 
-        return result.toVec3()
+        result.w = oriDepth
+
+        return result
     }
 
     public fragmentShader(barycentric: Vec3): [number, number, number, number] {
