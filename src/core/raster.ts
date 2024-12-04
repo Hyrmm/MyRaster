@@ -39,9 +39,9 @@ export class Raster {
 
         const defultCameraConfig: CameraParam = {
             fovY: 60, aspect: w / h,
-            near: 0.1, far: 5000,
-            projectType: ProjectType.Perspective,
-            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 800), lookAt: new Vec3(0, 0, -1),
+            near: -0.1, far: -400,
+            projectType: ProjectType.Orthogonal,
+            up: new Vec3(0, 1, 0), pos: new Vec3(0, 0, 2), lookAt: new Vec3(0, 0, -1),
             sceenHeight: h, sceenWidth: w
         }
 

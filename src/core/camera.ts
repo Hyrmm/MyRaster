@@ -144,17 +144,12 @@ export class Camera {
     }
 
     public perspective(): Matrix44 {
-        const top = this.near * Math.tan(this.fovY / 2 * Math.PI / 360)
-        const bottom = -top
-
-        const right = top * this.aspect
-        const left = -right
-
+        // 切换perspective分支查看透视投影实现
         return new Matrix44([
-            [this.near / right, 0, 0, 0],
-            [0, this.near / top, 0, 0],
-            [0, 0, (this.far + this.near) / (this.far - this.near), (2 * this.near * this.far) / (this.far - this.near)],
-            [0, 0, -1, 0]
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
         ])
     }
 

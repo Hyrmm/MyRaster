@@ -34,16 +34,12 @@ export class PhoneShader extends Shader {
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
 
         result = mvpMatrix.multiplyVec(result)
-        result = result.div(result.w)
 
         // viewport
         const viewPortMatrix = this.raster.viewPortMatrix
         result = viewPortMatrix.multiplyVec(result)
 
         this.viewSpaceVertex.push(mvpMatrix.multiplyVec(new Vec4(vertex.x, vertex.y, vertex.z, 1)).toVec3())
-
-        result = mvpMatrix.multiplyVec(result)
-        result = result.div(result.w)
 
         return result.toVec3()
     }
@@ -64,8 +60,6 @@ export class PhoneShader extends Shader {
 
         const light = Vec3.neg(this.raster.lightDir).normalize()
         const normal = new Vec3(normals[0] * 2 / 255 - 1, normals[1] * 2 / 255 - 1, normals[2] * 2 / 255 - 1).normalize()
-
-
 
 
         // 环境光
@@ -107,9 +101,7 @@ export class GouraudShader extends Shader {
         const viewMatrix = this.raster.viewMatrix
         const projectionMatrix = this.raster.projectionMatrix
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
-
         result = mvpMatrix.multiplyVec(result)
-        result = result.div(result.w)
 
         // viewport
         const viewPortMatrix = this.raster.viewPortMatrix
@@ -147,9 +139,7 @@ export class FlatShader extends Shader {
         const viewMatrix = this.raster.viewMatrix
         const projectionMatrix = this.raster.projectionMatrix
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
-
         result = mvpMatrix.multiplyVec(result)
-        result = result.div(result.w)
 
         // viewport
         const viewPortMatrix = this.raster.viewPortMatrix
