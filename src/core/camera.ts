@@ -25,8 +25,8 @@ export class Camera {
     private fovY: number
     private aspect: number
 
-    private far: number
-    private near: number
+    public far: number
+    public near: number
 
     private projectType: ProjectType
 
@@ -154,7 +154,7 @@ export class Camera {
             [this.near / right, 0, 0, 0],
             [0, this.near / top, 0, 0],
             [0, 0, (this.far + this.near) / (this.far - this.near), (2 * this.near * this.far) / (this.far - this.near)],
-            [0, 0, -1, 0]
+            [0, 0, 1, 0]
         ])
     }
 

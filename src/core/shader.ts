@@ -6,18 +6,20 @@ export abstract class Shader {
     protected raster: Raster
     constructor(raster: Raster) { this.raster = raster }
     public vertexShader(vertex: Vec3, idx: number): Vec4 { return new Vec4(0, 0, 0, 0) }
-    public fragmentShader(barycentric: Vec3): [number, number, number, number] { return [0, 0, 0, 0] }
+    public fragmentShader(barycentric: Vec3, interpolatedZ: number): [number, number, number, number] { return [0, 0, 0, 0] }
 }
 
 // 冯氏着色
 // 逐像素获取法向量，用道法线贴图
 export class PhoneShader extends Shader {
+    private oriDepth: Array<number> = []
     private textureVetex: Array<Vec3> = []
     private viewSpaceVertex: Array<Vec4> = []
     public vertexShader(vertex: Vec3, idx: number): Vec4 {
 
         if (this.vertex.length == 3) {
             this.vertex = []
+            this.oriDepth = []
             this.viewSpaceVertex = []
             this.textureVetex = []
         }
@@ -33,6 +35,8 @@ export class PhoneShader extends Shader {
         const projectionMatrix = this.raster.projectionMatrix
         const mvpMatrix = projectionMatrix.multiply(viewMatrix.multiply(modelMatrix))
         result = mvpMatrix.multiplyVec(result)
+
+        // 源坐标值
         this.viewSpaceVertex.push(result)
 
         // 源深度值
@@ -46,18 +50,22 @@ export class PhoneShader extends Shader {
         result = viewPortMatrix.multiplyVec(result)
 
         result.w = oriDepth
+        this.oriDepth.push(oriDepth)
 
         return result
     }
 
-    public fragmentShader(barycentric: Vec3): [number, number, number, number] {
+    public fragmentShader(barycentric: Vec3, interpolatedZ: number): [number, number, number, number] {
 
+        const alpha = barycentric.x
+        const beta = barycentric.y
+        const gamma = barycentric.z
 
-        const u = this.textureVetex[0].x * barycentric.x + this.textureVetex[1].x * barycentric.y + this.textureVetex[2].x * barycentric.z
-        const v = this.textureVetex[0].y * barycentric.x + this.textureVetex[1].y * barycentric.y + this.textureVetex[2].y * barycentric.z
-        const x = this.viewSpaceVertex[0].x * barycentric.x + this.viewSpaceVertex[1].x * barycentric.y + this.viewSpaceVertex[2].x
-        const y = this.viewSpaceVertex[0].y * barycentric.x + this.viewSpaceVertex[1].y * barycentric.y + this.viewSpaceVertex[2].y
-        const z = this.viewSpaceVertex[0].z * barycentric.x + this.viewSpaceVertex[1].z * barycentric.y + this.viewSpaceVertex[2].z
+        const u = interpolatedZ * (alpha * this.textureVetex[0].x / this.viewSpaceVertex[0].w + beta * this.textureVetex[1].x / this.viewSpaceVertex[1].w + gamma * this.textureVetex[2].x / this.viewSpaceVertex[2].w)
+        const v = interpolatedZ * (alpha * this.textureVetex[0].y / this.viewSpaceVertex[0].w + beta * this.textureVetex[1].y / this.viewSpaceVertex[1].w + gamma * this.textureVetex[2].y / this.viewSpaceVertex[2].w)
+        const x = interpolatedZ * (alpha * this.viewSpaceVertex[0].x / this.viewSpaceVertex[0].w + beta * this.viewSpaceVertex[1].x / this.viewSpaceVertex[1].w + gamma * this.viewSpaceVertex[2].x / this.viewSpaceVertex[2].w)
+        const y = interpolatedZ * (alpha * this.viewSpaceVertex[0].y / this.viewSpaceVertex[0].w + beta * this.viewSpaceVertex[1].y / this.viewSpaceVertex[1].w + gamma * this.viewSpaceVertex[2].y / this.viewSpaceVertex[2].w)
+        const z = interpolatedZ * (alpha * this.viewSpaceVertex[0].z / this.viewSpaceVertex[0].w + beta * this.viewSpaceVertex[1].z / this.viewSpaceVertex[1].w + gamma * this.viewSpaceVertex[2].z / this.viewSpaceVertex[2].w)
 
         const corlor = this.raster.textureDiffuse.sampling(u, v)
         const normals = this.raster.textureNormal.sampling(u, v)

@@ -43,11 +43,11 @@ class App {
         
         switch (e.code) {
             case "KeyW": {
-                this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, -10))
+                this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, -50))
                 break;
             }
             case "KeyS": {
-                this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, 10))
+                this.raster.camera.translatedCamera(new Matrix44().translate(0, 0, 50))
                 break;
             }
             case "KeyA": {

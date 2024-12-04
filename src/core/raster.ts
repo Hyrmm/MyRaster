@@ -140,11 +140,11 @@ export class Raster {
 
                 // 计算插值后该像素的深度值,并进行深度测试
                 const depth = this.depthBuffer.get(w, h)
-                const interpolatedZ = bar.x * screenCoords[0].z + bar.y * screenCoords[1].z + bar.z * screenCoords[2].z
-                if (interpolatedZ < -1 || interpolatedZ > 1 || interpolatedZ < depth) continue
+                const interpolatedZ = 1 / (bar.x / screenCoords[0].w + bar.y / screenCoords[1].w + bar.z / screenCoords[2].w)
+                if (interpolatedZ < depth || Math.abs(interpolatedZ) > this.camera.far || Math.abs(interpolatedZ) < this.camera.near) continue
 
                 // 调用片元着色器，计算该像素的颜色
-                const color = this.shader.fragmentShader(bar)
+                const color = this.shader.fragmentShader(bar, interpolatedZ)
 
                 this.depthBuffer.set(w, h, interpolatedZ)
                 this.frameBuffer.setPixel(w, h, color)
