@@ -52,3 +52,5 @@ Thumbs.db
 #//////////////////////////
 
 .vscode/
+dist/
+dist/
